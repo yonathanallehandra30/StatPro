@@ -1,2 +1,4634 @@
-# StatPro
-Website untuk olah data statistik
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebStat Pro - Analisis & Visualisasi Data</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Math & Stat Libraries -->
+    <script src="https://unpkg.com/simple-statistics@7.8.2/dist/simple-statistics.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js"></script>
+    
+    <!-- Charting & Export Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- jsPDF Library for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- Excel & CSV Import Library (SheetJS) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <!-- Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background-color: #f1f5f9; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Data Grid Styles */
+        .data-grid { display: block; overflow: auto; height: 100%; border: 1px solid #cbd5e1; background: white; border-radius: 8px; }
+        .spss-table { border-collapse: collapse; min-width: 100%; font-size: 13px; }
+        .spss-table th { background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 10px 14px; font-weight: 600; text-align: center; position: sticky; top: 0; z-index: 10; cursor: pointer; color: #1e293b; transition: all 0.2s; }
+        .spss-table th:hover { background-color: #f1f5f9; }
+        .spss-table td { border: 1px solid #e2e8f0; padding: 0; position: relative; }
+        .spss-table input { width: 100%; height: 100%; min-width: 100px; padding: 8px 10px; border: none; outline: none; text-align: right; background: transparent; transition: all 0.15s; }
+        .spss-table input:focus { background-color: #f0f7ff; box-shadow: inset 0 0 0 2px #2563eb; z-index: 1; }
+        .spss-table td.row-num { background-color: #f8fafc; text-align: center; font-weight: 600; color: #64748b; padding: 8px; width: 45px; position: sticky; left: 0; z-index: 9; border-right: 2px solid #cbd5e1;}
+
+        /* Classic SPSS Pivot Table Styling (SANGAT PERSIS SPSS) */
+        .spss-output-container {
+            font-family: 'Times New Roman', Times, serif, Arial, sans-serif;
+            color: #000000;
+            margin-bottom: 24px;
+        }
+        .spss-output-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #000000;
+            text-align: left;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .spss-output-table {
+            border-collapse: collapse;
+            width: auto;
+            min-width: 500px;
+            font-size: 12px;
+            background-color: #ffffff;
+            margin-bottom: 8px;
+        }
+        .spss-output-table th {
+            border-top: 2px solid #000000;
+            border-bottom: 1px solid #000000;
+            border-left: none;
+            border-right: none;
+            padding: 6px 12px;
+            font-weight: bold;
+            text-align: right;
+            background-color: #ffffff;
+            color: #000000;
+        }
+        .spss-output-table th:first-child {
+            text-align: left;
+        }
+        .spss-output-table td {
+            border-top: none;
+            border-bottom: 0.5px solid #e0e0e0;
+            border-left: none;
+            border-right: none;
+            padding: 5px 12px;
+            text-align: right;
+            background-color: #ffffff;
+            color: #000000;
+        }
+        .spss-output-table td:first-child {
+            text-align: left;
+            font-weight: normal;
+        }
+        .spss-output-table tr.total-row td {
+            font-weight: bold;
+            border-top: 1px solid #000000;
+            border-bottom: 2px solid #000000;
+        }
+        .spss-output-table tr:last-child td {
+            border-bottom: 2px solid #000000;
+        }
+        .spss-output-note {
+            font-size: 11px;
+            color: #333333;
+            font-style: italic;
+            margin-top: 4px;
+            text-align: left;
+        }
+
+        /* Tab Active States */
+        .ribbon-tab-btn.active {
+            @apply border-blue-600 text-blue-600 bg-white font-semibold;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-slate-800">
+
+    <!-- Header & Brand -->
+    <header class="bg-slate-900 text-white flex items-center justify-between px-6 py-3 shrink-0 z-30 shadow-lg border-b border-slate-800">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-blue-600 rounded-lg shadow-inner flex items-center justify-center">
+                <i class="fa-solid fa-chart-line text-xl text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight flex items-center gap-1.5">
+                    WebStat <span class="px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded font-semibold border border-blue-500/30">Pro</span>
+                </h1>
+                <p class="text-[10px] text-slate-400" id="headerSubtitle">Analisis Statistik & Visualisasi Data Dinamis</p>
+            </div>
+        </div>
+        
+        <!-- Controls & Language Selector -->
+        <div class="flex items-center gap-4">
+            <!-- Language Toggle Buttons -->
+            <div class="bg-slate-800 p-1 rounded-lg border border-slate-700 flex gap-1">
+                <button onclick="changeLanguage('id')" id="lang-id" class="px-2.5 py-1 text-xs font-bold rounded transition-all bg-blue-600 text-white">ID</button>
+                <button onclick="changeLanguage('en')" id="lang-en" class="px-2.5 py-1 text-xs font-bold rounded transition-all text-slate-400 hover:text-slate-200">EN</button>
+            </div>
+
+            <!-- Active Scales Reference Info -->
+            <div class="hidden md:flex gap-4 items-center text-xs text-slate-400 bg-slate-800/50 px-4 py-2 rounded-lg border border-slate-700/50">
+                <span class="font-medium text-slate-300" id="legendScaleTitle">Skala Data:</span>
+                <span class="flex items-center gap-1"><i class="fa-solid fa-tags text-emerald-400"></i> <span id="lblNominal">Nominal</span></span>
+                <span class="flex items-center gap-1"><i class="fa-solid fa-signal text-amber-400"></i> <span id="lblOrdinal">Ordinal</span></span>
+                <span class="flex items-center gap-1"><i class="fa-solid fa-calculator text-sky-400"></i> <span id="lblInterval">Interval</span></span>
+                <span class="flex items-center gap-1"><i class="fa-solid fa-ruler text-violet-400"></i> <span id="lblRatio">Rasio</span></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Top Ribbon Navigation Tabs -->
+    <div class="bg-white border-b border-slate-200 shrink-0 z-20 shadow-sm">
+        <!-- Tabs Header -->
+        <div class="flex border-b border-slate-200 px-6 bg-slate-50/50">
+            <button onclick="switchTab('data-tab')" id="tab-data-tab" class="ribbon-tab-btn active px-5 py-3 text-sm border-b-2 border-transparent transition-all hover:text-slate-900 flex items-center gap-2"><i class="fa-solid fa-database"></i> <span id="menuData">Data</span></button>
+            <button onclick="switchTab('analyze-tab')" id="tab-analyze-tab" class="ribbon-tab-btn px-5 py-3 text-sm border-b-2 border-transparent transition-all hover:text-slate-900 flex items-center gap-2"><i class="fa-solid fa-calculator"></i> <span id="menuAnalyze">Analisis</span></button>
+            <button onclick="switchTab('samples-tab')" id="tab-samples-tab" class="ribbon-tab-btn px-5 py-3 text-sm border-b-2 border-transparent transition-all hover:text-slate-900 flex items-center gap-2 text-emerald-700"><i class="fa-solid fa-graduation-cap"></i> <span id="menuSamples">Contoh Data</span></button>
+        </div>
+
+        <!-- Tab Contents (The Ribbon Body) -->
+        <div class="px-6 py-3.5 bg-white flex flex-wrap gap-4 items-center font-semibold">
+            
+            <!-- Tab: Data -->
+            <div id="data-tab" class="ribbon-content flex flex-wrap gap-2">
+                <!-- Import File Button -->
+                <button onclick="triggerFileImport()" class="px-3.5 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm">
+                    <i class="fa-solid fa-file-import"></i> <span id="btnImportData">Impor File (Excel/CSV/TXT)</span>
+                </button>
+                <input type="file" id="fileImportInput" class="hidden" accept=".xlsx,.xls,.csv,.tsv,.txt" onchange="handleFileImport(event)">
+
+                <button onclick="openComputeDialog()" class="px-3.5 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm" id="btnCompute">
+                    <i class="fa-solid fa-calculator"></i> <span>Hitung Variabel</span>
+                </button>
+
+                <span class="h-6 w-px bg-slate-200 self-center mx-1"></span>
+
+                <button onclick="addRow()" class="px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm">
+                    <i class="fa-solid fa-plus text-blue-600"></i> <span id="btnRowPlus">Tambah Baris (R+)</span>
+                </button>
+                <button onclick="addCol()" class="px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm">
+                    <i class="fa-solid fa-plus text-blue-600"></i> <span id="btnColPlus">Tambah Variabel (C+)</span>
+                </button>
+                <span class="h-6 w-px bg-slate-200 self-center mx-1"></span>
+                <button onclick="clearData()" class="px-3 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm">
+                    <i class="fa-solid fa-trash-can text-rose-600"></i> <span id="btnEmptyGrid">Kosongkan Grid</span>
+                </button>
+            </div>
+
+            <!-- Tab: Analyze -->
+            <div id="analyze-tab" class="ribbon-content hidden flex flex-wrap gap-2 overflow-x-auto">
+                <!-- Deskriptif Group -->
+                <div class="flex gap-1.5 bg-slate-50 p-1.5 rounded-lg border border-slate-100 shrink-0">
+                    <button onclick="openFrequency()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition border border-slate-200">
+                        <i class="fa-solid fa-chart-pie text-blue-600"></i> <span id="btnAnFreq">Analisis Frekuensi</span>
+                    </button>
+                    <button onclick="openDescriptive()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition border border-slate-200">
+                        <i class="fa-solid fa-table text-blue-600"></i> <span id="btnAnDesc">Deskriptif Lengkap</span>
+                    </button>
+                    <button onclick="openNormality()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition border border-slate-200">
+                        <i class="fa-solid fa-gauge text-blue-600"></i> <span id="btnAnNorm">Uji Normalitas (JB)</span>
+                    </button>
+                    <button onclick="openOneSampleKS()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition border border-slate-200" id="btnAnKS">
+                        <i class="fa-solid fa-scale-balanced text-rose-600"></i> <span>Uji K-S 1 Sampel</span>
+                    </button>
+                </div>
+                <!-- Perbandingan Group -->
+                <div class="flex gap-1.5 bg-slate-50 p-1.5 rounded-lg border border-slate-100 shrink-0">
+                    <button onclick="openOneSampleT()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition border border-slate-200" id="btnAnOneT">
+                        <i class="fa-solid fa-circle-dot text-indigo-600"></i> <span>Uji T 1 Sampel</span>
+                    </button>
+                    <button onclick="openIndSampleT()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition border border-slate-200" id="btnAnIndT">
+                        <i class="fa-solid fa-people-arrows text-indigo-600"></i> <span>Uji T Independen</span>
+                    </button>
+                    <button onclick="openPairedT()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition border border-slate-200">
+                        <i class="fa-solid fa-link text-indigo-600"></i> <span id="btnAnPairT">Uji T Berpasangan</span>
+                    </button>
+                    <button onclick="openAnova()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition border border-slate-200">
+                        <i class="fa-solid fa-layer-group text-indigo-600"></i> <span id="btnAnAnova">ANOVA 1 Arah</span>
+                    </button>
+                </div>
+                <!-- Hubungan & Kuesioner Group -->
+                <div class="flex gap-1.5 bg-slate-50 p-1.5 rounded-lg border border-slate-100 shrink-0">
+                    <button onclick="openCorrelation()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition border border-slate-200">
+                        <i class="fa-solid fa-circle-nodes text-emerald-600"></i> <span id="btnAnCorr">Korelasi</span>
+                    </button>
+                    <button onclick="openRegression()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition border border-slate-200">
+                        <i class="fa-solid fa-arrow-trend-up text-emerald-600"></i> <span id="btnAnReg">Regresi Sederhana</span>
+                    </button>
+                    <button onclick="openMultipleRegression()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition border border-slate-200">
+                        <i class="fa-solid fa-diagram-project text-emerald-600"></i> <span id="btnAnMultReg">Regresi Berganda</span>
+                    </button>
+                    <button onclick="openChiSquare()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition border border-slate-200">
+                        <i class="fa-solid fa-arrow-up-right-dots text-emerald-600"></i> <span id="btnAnChi">Uji Chi-Square</span>
+                    </button>
+                    <button onclick="openValidity()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition border border-slate-200">
+                        <i class="fa-solid fa-clipboard-check text-rose-600"></i> <span id="btnAnVal">Uji Validitas</span>
+                    </button>
+                    <button onclick="openReliability()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition border border-slate-200">
+                        <i class="fa-solid fa-shield-halved text-rose-600"></i> <span id="btnAnRel">Uji Reliabilitas</span>
+                    </button>
+                    <button onclick="openScatterPlot()" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition border border-slate-200">
+                        <i class="fa-solid fa-chart-scatter text-violet-600"></i> <span id="btnAnScatter">Scatter Plot</span>
+                    </button>
+                    <!-- Brand New SmartPLS SEM-PLS Mode -->
+                    <button onclick="openPLSModelingDialog()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-xs font-bold flex items-center gap-1.5 shadow-sm transition border border-amber-600 shrink-0">
+                        <i class="fa-solid fa-diagram-successor text-white animate-pulse"></i> <span>SmartPLS (SEM-PLS)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab: Sample Datasets -->
+            <div id="samples-tab" class="ribbon-content hidden flex flex-wrap gap-2">
+                <button onclick="loadSampleDataset('study')" class="px-3 py-2 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm border border-emerald-100">
+                    <i class="fa-solid fa-book-open"></i> <span id="btnSample1">Kasus 1: Jam Belajar vs Nilai Ujian (Regresi/Korelasi)</span>
+                </button>
+                <button onclick="loadSampleDataset('diet')" class="px-3 py-2 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm border border-emerald-100">
+                    <i class="fa-solid fa-weight-scale"></i> <span id="btnSample2">Kasus 2: Program Diet Klinis (Paired T-test)</span>
+                </button>
+                <button onclick="loadSampleDataset('fertilizer')" class="px-3 py-2 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm border border-emerald-100">
+                    <i class="fa-solid fa-seedling"></i> <span id="btnSample3">Kasus 3: Efek Pupuk pada Tanaman (ANOVA 1 Arah)</span>
+                </button>
+                <button onclick="loadSampleDataset('questionnaire')" class="px-3 py-2 bg-rose-50 text-rose-800 hover:bg-rose-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm border border-rose-100">
+                    <i class="fa-solid fa-clipboard-question"></i> <span id="btnSample4">Kasus 4: Data Kuesioner Kepuasan (Validitas & Reliabilitas)</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Main Workspace (Dynamic Split Layout) -->
+    <div class="flex flex-1 overflow-hidden p-3 bg-slate-100/60 gap-0 relative">
+        
+        <!-- Data View (Left Side) -->
+        <div id="dataViewContainer" class="flex-1 flex flex-col bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden transition-all duration-300">
+            <div class="bg-slate-50/80 px-4 py-3 border-b border-slate-200 flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="font-bold text-xs uppercase tracking-wider text-slate-600" id="lblGridTitle">Lembar Data (Data Editor)</span>
+                </div>
+                <div class="text-[11px] text-slate-400 font-medium" id="lblGridHelp">Klik kepala kolom untuk mengubah nama & skala variabel</div>
+            </div>
+            <div class="data-grid p-3 bg-slate-50/30" id="dataGridContainer">
+                <table class="spss-table shadow-sm rounded-lg overflow-hidden" id="dataTable">
+                    <!-- Table injected by JS -->
+                </table>
+            </div>
+        </div>
+
+        <!-- Resizer -->
+        <div id="resizer" class="w-3 hover:w-4 bg-slate-300 hover:bg-blue-600 cursor-col-resize self-stretch shrink-0 transition-all hidden z-10 mx-1 rounded-full shadow-inner flex items-center justify-center">
+            <div class="w-1 h-8 bg-white/60 rounded-full"></div>
+        </div>
+
+        <!-- Output View (Right Side, slide in) -->
+        <div id="outputViewContainer" class="w-[45%] flex flex-col bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden hidden transition-all duration-300">
+            <div class="bg-slate-50/80 px-4 py-3 border-b border-slate-200 shrink-0 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-desktop text-blue-600 text-sm"></i>
+                    <span class="font-bold text-xs uppercase tracking-wider text-slate-600" id="lblOutputTitle">Hasil Analisis (Output Viewer)</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="exportAllToPDF()" class="text-xs text-blue-700 hover:text-blue-900 font-bold flex items-center gap-1 transition" id="btnExportAllPDF">
+                        <i class="fa-solid fa-file-pdf"></i> <span>Ekspor Semua (PDF)</span>
+                    </button>
+                    <span class="h-4 w-px bg-slate-300"></span>
+                    <button onclick="clearOutput()" class="text-xs text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1 transition">
+                        <i class="fa-solid fa-circle-xmark"></i> <span id="btnHidePanel">Sembunyikan Panel</span>
+                    </button>
+                </div>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 bg-slate-50/10" id="outputArea">
+                <div class="text-center text-slate-400 mt-16" id="outputEmptyState">
+                    <i class="fa-solid fa-print text-5xl mb-3 text-slate-300"></i>
+                    <p class="text-sm font-medium" id="lblEmptyStateText">Hasil perhitungan statistik akan ditampilkan di sini</p>
+                </div>
+                <!-- Output injected here -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Custom Message Box (Alert substitute) -->
+    <div id="msgBox" class="fixed inset-0 bg-slate-900/40 z-[60] hidden flex items-center justify-center backdrop-blur-sm transition-all">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-90 max-w-[90%] transform scale-95 transition-transform duration-200 border border-slate-100" id="msgBoxContent">
+            <div class="flex items-center gap-3 mb-4 text-emerald-600" id="msgBoxIconColor">
+                <i class="fa-solid fa-circle-exclamation text-2xl" id="msgBoxIcon"></i>
+                <h3 class="text-lg font-bold" id="lblMsgBoxHeader">Pemberitahuan</h3>
+            </div>
+            <p id="msgBoxText" class="text-slate-600 text-sm mb-6 leading-relaxed"></p>
+            <div class="flex justify-end">
+                <button onclick="closeMsgBox()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg font-semibold text-xs transition" id="btnMsgUnderstand">Mengerti</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Variable Config Modal -->
+    <div id="varConfigModal" class="fixed inset-0 bg-slate-900/50 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl w-[520px] max-w-[95%] max-h-[95vh] transform scale-95 transition-all duration-200 flex flex-col" id="varConfigContent">
+            <div class="px-5 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-xl shrink-0">
+                <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider"><i class="fa-solid fa-gear text-blue-600 mr-2"></i><span id="lblModalVarConfig">Konfigurasi Variabel</span></h2>
+                <button onclick="closeVarConfig()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-5 flex flex-col gap-4 overflow-y-auto flex-1">
+                <input type="hidden" id="cfgVarIndex">
+                
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500" id="lblModalVarName">Nama Variabel</label>
+                    <input type="text" id="cfgVarName" class="border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition">
+                </div>
+                
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500" id="lblModalVarScale">Skala Pengukuran Data</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <!-- Nominal Card -->
+                        <label class="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 cursor-pointer transition border-slate-200 shadow-sm">
+                            <input type="radio" name="cfgVarScale" value="Nominal" class="text-blue-600 focus:ring-blue-500">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-bold text-slate-800"><i class="fa-solid fa-tags text-emerald-500 mr-1"></i><span id="scaleNominal">Nominal</span></span>
+                                <span class="text-[10px] text-slate-400" id="descNominal">Kategori acak</span>
+                            </div>
+                        </label>
+                        <!-- Ordinal Card -->
+                        <label class="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 cursor-pointer transition border-slate-200 shadow-sm">
+                            <input type="radio" name="cfgVarScale" value="Ordinal" class="text-blue-600 focus:ring-blue-500">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-bold text-slate-800"><i class="fa-solid fa-signal text-amber-500 mr-1"></i><span id="scaleOrdinal">Ordinal</span></span>
+                                <span class="text-[10px] text-slate-400" id="descOrdinal">Kategori berjenjang</span>
+                            </div>
+                        </label>
+                        <!-- Interval Card -->
+                        <label class="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 cursor-pointer transition border-slate-200 shadow-sm">
+                            <input type="radio" name="cfgVarScale" value="Interval" class="text-blue-600 focus:ring-blue-500">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-bold text-slate-800"><i class="fa-solid fa-calculator text-sky-500 mr-1"></i><span id="scaleInterval">Interval</span></span>
+                                <span class="text-[10px] text-slate-400" id="descInterval">Jarak bernilai tetap</span>
+                            </div>
+                        </label>
+                        <!-- Ratio Card -->
+                        <label class="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 cursor-pointer transition border-slate-200 shadow-sm">
+                            <input type="radio" name="cfgVarScale" value="Ratio" class="text-blue-600 focus:ring-blue-500">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-bold text-slate-800"><i class="fa-solid fa-ruler text-violet-500 mr-1"></i><span id="scaleRatio">Rasio</span></span>
+                                <span class="text-[10px] text-slate-400" id="descRatio">Nol mutlak</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- VALUE LABELS SECTION -->
+                <div class="flex flex-col gap-2 border-t border-slate-200 pt-4">
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500"><i class="fa-solid fa-tags text-blue-600 mr-1.5"></i><span id="lblValueLabels">Label Nilai (Value Labels)</span></label>
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+                        <div class="md:col-span-4 flex flex-col gap-1">
+                            <span class="text-[10px] font-bold text-slate-400" id="lblInputVal">Nilai (Value)</span>
+                            <input type="text" id="cfgValInput" class="border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-blue-600" placeholder="e.g. 1">
+                        </div>
+                        <div class="md:col-span-6 flex flex-col gap-1">
+                            <span class="text-[10px] font-bold text-slate-400" id="lblInputLabel">Label</span>
+                            <input type="text" id="cfgLabelInput" class="border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-blue-600" placeholder="e.g. Laki-laki">
+                        </div>
+                        <div class="md:col-span-2">
+                            <button onclick="addValueLabel()" type="button" class="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold transition">Add</button>
+                        </div>
+                    </div>
+                    <!-- Value Labels List -->
+                    <div class="border border-slate-200 rounded-lg p-2 max-h-32 overflow-y-auto bg-slate-50 mt-2 text-xs">
+                        <div id="valueLabelsList" class="flex flex-col gap-1.5">
+                            <!-- Injected Dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="px-5 py-4 border-t border-slate-200 bg-slate-50 rounded-b-xl flex justify-end gap-2 shrink-0">
+                <button onclick="closeVarConfig()" class="px-4 py-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-semibold transition" id="btnModalCancel">Batal</button>
+                <button onclick="saveVarConfig()" class="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold shadow-sm transition" id="btnModalSave">Simpan Perubahan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compute Variable Modal (SPSS-Style!) -->
+    <div id="computeModal" class="fixed inset-0 bg-slate-900/50 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl w-[650px] max-w-[95%] max-h-[95vh] flex flex-col" id="computeContent">
+            <div class="px-5 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-xl shrink-0">
+                <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider"><i class="fa-solid fa-calculator text-blue-600 mr-2"></i><span id="lblDlgTitleCompute">Hitung Variabel</span></h2>
+                <button onclick="closeComputeDialog()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <div class="p-5 flex flex-col gap-4 overflow-y-auto flex-1">
+                <!-- Target Variable -->
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-500" id="lblTargetVar">Variabel Sasaran (Target Variable)</label>
+                    <input type="text" id="targetVarName" class="border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition" placeholder="e.g. SKOR_TOTAL">
+                </div>
+                
+                <!-- Split Workspace -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <!-- Left: Variables List -->
+                    <div class="md:col-span-5 flex flex-col gap-2">
+                        <label class="text-xs font-bold uppercase tracking-wider text-slate-500" id="lblVarList">Daftar Variabel</label>
+                        <div id="computeVarList" class="border border-slate-200 rounded-lg p-2 max-h-60 overflow-y-auto bg-slate-50 flex flex-col gap-1 text-xs">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    
+                    <!-- Right: Expression and Keypad -->
+                    <div class="md:col-span-7 flex flex-col gap-2">
+                        <label class="text-xs font-bold uppercase tracking-wider text-slate-500" id="lblNumericExpression">Ekspresi Numerik</label>
+                        <textarea id="numericExpr" rows="3" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition font-mono" placeholder="e.g. MEAN(VAR001, VAR002, VAR003)"></textarea>
+                        
+                        <!-- Keypad / Helpers -->
+                        <div class="mt-2 flex flex-col gap-2">
+                            <span class="text-[10px] font-bold text-slate-400" id="lblKeypad">Papan Ketik / Fungsi:</span>
+                            <div class="grid grid-cols-4 gap-1.5 text-xs font-semibold">
+                                <button onclick="insertIntoExpr('+')" type="button" class="py-1.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-800 transition">+</button>
+                                <button onclick="insertIntoExpr('-')" type="button" class="py-1.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-800 transition">-</button>
+                                <button onclick="insertIntoExpr('*')" type="button" class="py-1.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-800 transition">*</button>
+                                <button onclick="insertIntoExpr('/')" type="button" class="py-1.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-800 transition">/</button>
+                                
+                                <button onclick="insertIntoExpr('(')" type="button" class="py-1.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-800 transition">(</button>
+                                <button onclick="insertIntoExpr(')')" type="button" class="py-1.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-800 transition">)</button>
+                                <button onclick="insertIntoExpr('SUM(')" type="button" class="py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded transition font-bold">SUM( )</button>
+                                <button onclick="insertIntoExpr('MEAN(')" type="button" class="py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded transition font-bold">MEAN( )</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="px-5 py-4 border-t border-slate-200 bg-slate-50 rounded-b-xl flex justify-end gap-2 shrink-0">
+                <button onclick="closeComputeDialog()" class="px-4 py-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-semibold transition" id="btnComputeCancel">Batal</button>
+                <button onclick="runCompute()" class="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold shadow-sm transition" id="btnComputeRun">Hitung</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dynamic Dialog Box for analyses -->
+    <div id="dynamicDialog" class="fixed inset-0 bg-slate-900/50 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl w-[520px] max-w-[95%] max-h-[90vh] flex flex-col">
+            <div class="px-5 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-xl">
+                <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider" id="dialogTitle">Pilih Variabel</h2>
+                <button onclick="closeDialog()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-5 overflow-y-auto flex-1 flex flex-col gap-4 bg-slate-50/50" id="dialogBody">
+                <!-- Inputs injected dynamically -->
+            </div>
+            <div class="px-5 py-4 border-t border-slate-200 bg-slate-50 rounded-b-xl flex justify-end gap-2">
+                <button onclick="closeDialog()" class="px-4 py-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-semibold transition" id="btnDialogCancel">Batal</button>
+                <button id="dialogRunBtn" class="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold shadow-sm transition">Jalankan Analisis</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Brand New: Interactive SmartPLS (SEM-PLS) Modeling Modal Dialog -->
+    <div id="plsModelingModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl w-[950px] max-w-[95%] h-[90vh] flex flex-col border border-slate-200">
+            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-t-xl shrink-0">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-diagram-successor text-xl"></i>
+                    <h2 class="text-sm font-bold uppercase tracking-wider">Workspace Pemodelan SEM-PLS (SmartPLS Mode)</h2>
+                </div>
+                <button onclick="closePLSModelingDialog()" class="text-white hover:text-slate-200"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+                <!-- Left Control Panel: Add constructs and paths -->
+                <div class="w-full md:w-80 border-r border-slate-200 p-5 flex flex-col gap-5 overflow-y-auto bg-slate-50">
+                    <!-- Step 1: Create Construct -->
+                    <div class="border border-slate-200 rounded-lg p-3 bg-white shadow-sm flex flex-col gap-3">
+                        <h3 class="text-xs font-extrabold text-amber-600 uppercase border-b pb-1">1. Buat Variabel Laten (Construct)</h3>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[10px] font-bold text-slate-400">Nama Laten</span>
+                            <input type="text" id="plsConstructName" class="border border-slate-300 rounded p-1.5 text-xs outline-none focus:border-amber-500" placeholder="e.g., Kepuasan">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[10px] font-bold text-slate-400">Indikator (Pilih satu atau lebih)</span>
+                            <div id="plsIndicatorList" class="border border-slate-200 rounded p-1.5 max-h-32 overflow-y-auto flex flex-col gap-1 text-[11px] bg-slate-50">
+                                <!-- Populated on modal open -->
+                            </div>
+                        </div>
+                        <button onclick="addPLSConstruct()" class="w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded text-xs font-bold transition">Tambah Construct</button>
+                    </div>
+
+                    <!-- Step 2: Create Paths -->
+                    <div class="border border-slate-200 rounded-lg p-3 bg-white shadow-sm flex flex-col gap-3">
+                        <h3 class="text-xs font-extrabold text-amber-600 uppercase border-b pb-1">2. Buat Alur Jalur (Path)</h3>
+                        <div class="grid grid-cols-2 gap-1.5">
+                            <div class="flex flex-col gap-1">
+                                <span class="text-[10px] font-bold text-slate-400">Dari (Source)</span>
+                                <select id="plsPathFrom" class="border border-slate-300 rounded p-1.5 text-xs bg-white outline-none"></select>
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <span class="text-[10px] font-bold text-slate-400">Ke (Target)</span>
+                                <select id="plsPathTo" class="border border-slate-300 rounded p-1.5 text-xs bg-white outline-none"></select>
+                            </div>
+                        </div>
+                        <button onclick="addPLSPath()" class="w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded text-xs font-bold transition">Tambah Hubungan</button>
+                    </div>
+
+                    <!-- Active Models Details -->
+                    <div class="flex-1 min-h-36 border border-slate-200 rounded-lg p-3 bg-white shadow-sm flex flex-col gap-3">
+                        <h3 class="text-xs font-extrabold text-slate-600 uppercase border-b pb-1">Daftar Variabel & Jalur</h3>
+                        <div id="plsConstructListSummary" class="text-xs text-slate-600 flex flex-col gap-1.5 max-h-44 overflow-y-auto">
+                            <!-- Summary list -->
+                        </div>
+                        <button onclick="clearPLSModel()" class="w-full py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded text-xs font-semibold transition mt-auto"><i class="fa-solid fa-trash mr-1"></i> Reset Model</button>
+                    </div>
+                </div>
+
+                <!-- Right Path Canvas Layout: Visualize structural model -->
+                <div class="flex-1 flex flex-col p-5 overflow-hidden relative">
+                    <div class="text-xs text-slate-400 mb-2 flex justify-between items-center">
+                        <span><i class="fa-solid fa-circle-info mr-1"></i> Preview Diagram Model Struktural & Pengukuran</span>
+                        <span class="font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 shadow-sm animate-pulse">SmartPLS Live Visualizer</span>
+                    </div>
+                    
+                    <!-- Diagram SVG Viewport Canvas -->
+                    <div class="flex-1 border border-slate-200 rounded-xl bg-slate-50/50 shadow-inner relative overflow-hidden" id="plsCanvasContainer">
+                        <svg id="plsStructuralSvg" class="w-full h-full">
+                            <!-- Dynamically injected paths, constructs, indicators -->
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer execution controls -->
+            <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-xl flex justify-between items-center shrink-0">
+                <button onclick="loadPLSDemoData()" class="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition shadow-sm"><i class="fa-solid fa-magic mr-1"></i> Muat Template Contoh Model PLS</button>
+                <div class="flex gap-2">
+                    <button onclick="closePLSModelingDialog()" class="px-4 py-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-semibold transition" id="btnModalPLSCancel">Batal</button>
+                    <button onclick="executePLS_SEM()" class="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shadow-md transition flex items-center gap-1.5"><i class="fa-solid fa-diagram-successor"></i> Jalankan Algoritma PLS-SEM</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- TRANSLATION STATE & DICTIONARIES (i18n) ---
+        let currentLang = 'id';
+        const langDict = {
+            id: {
+                subtitle: "Analisis Statistik & Visualisasi Data Dinamis",
+                legendScale: "Skala Data:",
+                menuData: "Data",
+                menuAnalyze: "Analisis",
+                menuSamples: "Contoh Data",
+                btnRowPlus: "Tambah Baris (R+)",
+                btnColPlus: "Tambah Variabel (C+)",
+                btnEmptyGrid: "Kosongkan Grid",
+                btnAnFreq: "Analisis Frekuensi",
+                btnAnDesc: "Deskriptif Lengkap",
+                btnAnOneT: "Uji T 1 Sampel",
+                btnAnIndT: "Uji T Independen",
+                btnAnPairT: "Uji T Berpasangan",
+                btnAnAnova: "ANOVA 1 Arah",
+                btnAnCorr: "Korelasi",
+                btnAnReg: "Regresi Sederhana",
+                btnAnVal: "Uji Validitas",
+                btnAnRel: "Uji Reliabilitas",
+                btnAnScatter: "Scatter Plot",
+                btnAnNorm: "Uji Normalitas (JB)",
+                btnAnMultReg: "Regresi Berganda",
+                btnAnChi: "Uji Chi-Square",
+                btnSample1: "Kasus 1: Jam Belajar vs Nilai Ujian (Regresi/Korelasi)",
+                btnSample2: "Kasus 2: Program Diet Klinis (Paired T-test)",
+                btnSample3: "Kasus 3: Efek Pupuk pada Tanaman (ANOVA 1 Arah)",
+                btnSample4: "Kasus 4: Data Kuesioner Kepuasan (Validitas & Reliabilitas)",
+                lblGridTitle: "Lembar Data (Data Editor)",
+                lblGridHelp: "Klik kepala kolom untuk mengubah nama & skala variabel",
+                lblOutputTitle: "Hasil Analisis (Output Viewer)",
+                btnHidePanel: "Sembunyikan Panel",
+                lblEmptyStateText: "Hasil perhitungan statistik akan ditampilkan di sini",
+                lblMsgBoxHeader: "Pemberitahuan",
+                btnMsgUnderstand: "Mengerti",
+                lblModalVarConfig: "Konfigurasi Variabel",
+                lblModalVarName: "Nama Variabel",
+                lblModalVarScale: "Skala Pengukuran Data",
+                scaleNominal: "Nominal",
+                scaleOrdinal: "Ordinal",
+                scaleInterval: "Interval",
+                scaleRatio: "Rasio",
+                descNominal: "Kategori acak",
+                descOrdinal: "Kategori berjenjang",
+                descInterval: "Jarak bernilai tetap",
+                descRatio: "Nol mutlak",
+                btnModalCancel: "Batal",
+                btnModalSave: "Simpan Perubahan",
+                btnDialogCancel: "Batal",
+                btnDialogRun: "Jalankan Analisis",
+                errNoData: "Tidak ada data numerik valid",
+                errTwoVars: "Pilih dua variabel yang berbeda.",
+                errMinTwo: "Kedua grup harus memiliki minimal 2 data numerik valid.",
+                errMinPaired: "Memerlukan minimal 2 pasang data numerik yang valid.",
+                errMinCorr: "Silakan pilih minimal 2 variabel untuk korelasi.",
+                errMinReg: "Memerlukan minimal 3 pasang data numerik valid.",
+                errAnovaGroup: "Diperlukan minimal 2 kelompok yang berbeda pada variabel pengelompok.",
+                confirmClear: "Apakah Anda yakin ingin menghapus semua data?",
+                dlgTitleDesc: "Analisis Deskriptif",
+                dlgVarAn: "Variabel Analisis",
+                dlgTitleOneT: "Uji T Satu Sampel",
+                dlgVarOneT: "Variabel Uji (Test Variable)",
+                dlgValOneT: "Nilai Acuan (Test Value)",
+                dlgTitleIndT: "Uji T Sampel Independen",
+                dlgVarGroup1: "Variabel Grup 1",
+                dlgVarGroup2: "Variabel Grup 2",
+                dlgTitlePairT: "Uji T Sampel Berpasangan",
+                dlgVarPre: "Variabel Sebelum (Pair 1 - Var 1)",
+                dlgVarPost: "Variabel Sesudah (Pair 1 - Var 2)",
+                dlgTitleCorr: "Korelasi Pearson",
+                dlgTitleReg: "Regresi Linear Sederhana",
+                dlgVarDep: "Variabel Dependen (Y)",
+                dlgVarIndep: "Variabel Independen (X)",
+                dlgTitleAnova: "ANOVA Satu Arah",
+                dlgVarAnovaDep: "Variabel Dependen (Numerik)",
+                dlgVarAnovaGroup: "Variabel Faktor (Pengelompok)",
+                dlgTitleScatter: "Scatter Plot",
+                dlgVarScatterY: "Sumbu Y",
+                dlgVarScatterX: "Sumbu X",
+                btnImportData: "Impor File (Excel/CSV/TXT)",
+                dlgTitleFreq: "Analisis Frekuensi",
+                dlgVarFreq: "Pilih Variabel Frekuensi",
+                
+                // Options Localization
+                lblOptStats: "Pilih Statistik yang Ditampilkan:",
+                lblOptConf: "Opsi Pengukuran (Options):",
+                lblOptCharts: "Opsi Bagan (Charts):",
+                lblOptConfidence: "Tingkat Kepercayaan (CI)",
+                lblOptCumPercent: "Tampilkan Persentase Kumulatif",
+                lblOptShowChart: "Tampilkan Bagan Batang (Bar Chart)",
+                lblOptAnovaTable: "Tampilkan Ringkasan Deskriptif Grup",
+                lblOptFlagSig: "Tandai Korelasi Signifikan (* / **)",
+                lblOptShowRegPlot: "Gambarkan Grafik Scatter + Garis Regresi",
+                lblOptModelSummary: "Tampilkan Tabel Ringkasan Model",
+                lblOptAnovaReg: "Tampilkan Tabel ANOVA Regresi",
+                
+                // Value Labels Labels
+                lblValueLabels: "Label Nilai (Value Labels)",
+                lblInputVal: "Nilai (Value)",
+                lblInputLabel: "Label",
+                
+                // Validity & Reliability Localization
+                dlgTitleValidity: "Uji Validitas Butir",
+                dlgVarValidity: "Pilih Butir Pertanyaan (Items)",
+                dlgTitleReliability: "Uji Reliabilitas Cronbach's Alpha",
+                dlgVarReliability: "Pilih Butir Pertanyaan (Items)",
+                spssValidityTitle: "Hasil Uji Validitas Butir (Corrected Item-Total Correlation)",
+                spssReliabilityTitle: "Hasil Uji Reliabilitas",
+                lblReliabilityStats: "Reliability Statistics",
+                lblCronbachAlpha: "Cronbach's Alpha",
+                lblNOfItems: "N of Items",
+                lblStatusValid: "VALID",
+                lblStatusInvalid: "TIDAK VALID",
+                lblStatusReliable: "RELIABEL",
+                lblStatusUnreliable: "TIDAK RELIABEL",
+                
+                // New Advanced Methods Localization
+                dlgTitleNormality: "Uji Normalitas Jarque-Bera",
+                dlgVarNormality: "Pilih Variabel untuk Uji Normalitas",
+                dlgTitleMultipleRegression: "Regresi Linear Berganda",
+                dlgVarIndeps: "Pilih Beberapa Variabel Independen (X)",
+                dlgTitleChiSquare: "Uji Tabulasi Silang & Chi-Square",
+                dlgVarChiRow: "Variabel Baris (Kategori)",
+                dlgVarChiCol: "Variabel Kolom (Kategori)",
+                spssNormalityTitle: "Uji Normalitas (Jarque-Bera)",
+                spssMultRegTitle: "Regresi Berganda",
+                spssChiTitle: "Uji Chi-Square & Tabulasi Silang",
+                lblNormNormal: "Berdistribusi Normal",
+                lblNormNotNormal: "Tidak Berdistribusi Normal",
+                lblDecision: "Keputusan (Decision)",
+                
+                // Export & Copy Localizations
+                btnExportAllPDF: "Ekspor Semua (PDF)",
+                btnCopyImage: "Salin Gambar",
+                btnCopyData: "Salin Data Tabel",
+                msgCopySuccess: "Berhasil disalin ke clipboard!",
+                msgCopyError: "Gagal menyalin. Pastikan izin clipboard aktif.",
+
+                // Compute variable translation
+                btnCompute: "Hitung Variabel (Compute)",
+                dlgTitleCompute: "Hitung Variabel (Compute Variable)",
+                lblTargetVar: "Variabel Sasaran (Target Variable)",
+                lblNumericExpression: "Ekspresi Numerik",
+                lblVarList: "Daftar Variabel:",
+                lblKeypad: "Papan Ketik / Fungsi:",
+
+                // K-S Test Translation
+                dlgTitleKS: "Uji Kolmogorov-Smirnov Satu Sampel",
+                dlgVarKS: "Pilih Variabel untuk Uji K-S",
+                spssKSTitle: "One-Sample Kolmogorov-Smirnov Test",
+
+                // SPSS Pivot localized titles
+                spssFreqTitle: "Analisis Frekuensi",
+                spssDescTitle: "Statistik Deskriptif",
+                spssOneSampleStats: "Statistik Satu Sampel",
+                spssOneSampleTest: "Uji Satu Sampel",
+                spssGroupStats: "Statistik Grup",
+                spssIndSamplesTest: "Uji Sampel Independen",
+                spssEqAssumed: "Varians diasumsikan sama",
+                spssEqNotAssumed: "Varians tidak diasumsikan sama",
+                spssPairedStats: "Statistik Sampel Berpasangan",
+                spssPairedCorr: "Korelasi Sampel Berpasangan",
+                spssPairedTest: "Uji Sampel Berpasangan",
+                spssCorrelationTitle: "Korelasi",
+                spssModelSummary: "Ringkasan Model",
+                spssANOVA: "ANOVA",
+                spssCoefficients: "Koefisien",
+                spssConstant: "(Constant)",
+                spssScatterNote: "Diagram Pencar (Scatter Plot)"
+            },
+            en: {
+                subtitle: "Statistical Analysis & Dynamic Data Visualization",
+                legendScale: "Data Scale:",
+                menuData: "Data",
+                menuAnalyze: "Analyze",
+                menuSamples: "Sample Data",
+                btnRowPlus: "Add Row (R+)",
+                btnColPlus: "Add Variable (C+)",
+                btnEmptyGrid: "Clear Grid",
+                btnAnFreq: "Frequency Analysis",
+                btnAnDesc: "Descriptive Statistics",
+                btnAnOneT: "One-Sample T-Test",
+                btnAnIndT: "Independent T-Test",
+                btnAnPairT: "Paired T-Test",
+                btnAnova: "One-Way ANOVA",
+                btnAnCorr: "Correlation",
+                btnAnReg: "Simple Regression",
+                btnAnVal: "Validity Test",
+                btnAnRel: "Reliability Test",
+                btnAnScatter: "Scatter Plot",
+                btnAnNorm: "Normality Test",
+                btnAnMultReg: "Multiple Regression",
+                btnAnChi: "Chi-Square Test",
+                btnSample1: "Case 1: Study Hours vs Exam Score (Regression/Correlation)",
+                btnSample2: "Case 2: Clinical Diet Program (Paired T-test)",
+                btnSample3: "Case 3: Fertilizer Effect on Plants (One-Way ANOVA)",
+                btnSample4: "Case 4: Satisfaction Questionnaire (Validity & Reliability)",
+                lblGridTitle: "Data Grid (Data Editor)",
+                lblGridHelp: "Click column headers to rename & change variable scale",
+                lblOutputTitle: "Analysis Outputs (Output Viewer)",
+                btnHidePanel: "Hide Panel",
+                lblEmptyStateText: "Statistical calculation outputs will be displayed here",
+                lblMsgBoxHeader: "Notification",
+                btnMsgUnderstand: "Understand",
+                lblModalVarConfig: "Variable Configuration",
+                lblModalVarName: "Variable Name",
+                lblModalVarScale: "Data Measurement Scale",
+                scaleNominal: "Nominal",
+                scaleOrdinal: "Ordinal",
+                scaleInterval: "Interval",
+                scaleRatio: "Ratio",
+                descNominal: "Random categories",
+                descOrdinal: "Ordered categories",
+                descInterval: "Fixed numeric interval",
+                descRatio: "Absolute zero",
+                btnModalCancel: "Cancel",
+                btnModalSave: "Save Changes",
+                btnDialogCancel: "Cancel",
+                btnDialogRun: "Run Analysis",
+                errNoData: "No valid numeric data found",
+                errTwoVars: "Please select two different variables.",
+                errMinTwo: "Both groups must have at least 2 valid numeric data values.",
+                errMinPaired: "Requires at least 2 valid paired numeric data rows.",
+                errMinCorr: "Please select at least 2 variables for correlation.",
+                errMinReg: "Requires at least 3 pairs of valid numeric data.",
+                errAnovaGroup: "At least 2 distinct groups are required in the grouping variable.",
+                confirmClear: "Are you sure you want to delete all data?",
+                dlgTitleDesc: "Descriptive Analysis",
+                dlgVarAn: "Analysis Variables",
+                dlgTitleOneT: "One-Sample T-Test",
+                dlgVarOneT: "Test Variable",
+                dlgValOneT: "Test Value",
+                dlgTitleIndT: "Independent Samples T-Test",
+                dlgVarGroup1: "Group 1 Variable",
+                dlgVarGroup2: "Group 2 Variable",
+                dlgTitlePairT: "Paired Samples T-Test",
+                dlgVarPre: "Pre Variable (Pair 1 - Var 1)",
+                dlgVarPost: "Post Variable (Pair 1 - Var 2)",
+                dlgTitleCorr: "Pearson Correlation",
+                dlgTitleReg: "Simple Linear Regression",
+                dlgVarDep: "Dependent Variable (Y)",
+                dlgVarIndep: "Independent Variable (X)",
+                dlgTitleAnova: "One-Way ANOVA",
+                dlgVarAnovaDep: "Dependent Variable (Numeric)",
+                dlgVarAnovaGroup: "Factor Variable (Grouping)",
+                dlgTitleScatter: "Scatter Plot",
+                dlgVarScatterY: "Y Axis",
+                dlgVarScatterX: "X Axis",
+                btnImportData: "Import File (Excel/CSV/TXT)",
+                dlgTitleFreq: "Frequency Analysis",
+                dlgVarFreq: "Select Variables for Frequency",
+                
+                // Options Localization
+                lblOptStats: "Select Statistics to Display:",
+                lblOptConf: "Options & Parameters:",
+                lblOptCharts: "Chart Options:",
+                lblOptConfidence: "Confidence Interval (CI)",
+                lblOptCumPercent: "Display Cumulative Percent",
+                lblOptShowChart: "Display Bar Chart",
+                lblOptAnovaTable: "Display Group Descriptive Table",
+                lblOptFlagSig: "Flag Significant Correlations (* / **)",
+                lblOptShowRegPlot: "Draw Scatter + Regression Line Plot",
+                lblOptModelSummary: "Display Model Summary Table",
+                lblOptAnovaReg: "Display Regression ANOVA Table",
+                
+                // Value Labels Labels
+                lblValueLabels: "Value Labels",
+                lblInputVal: "Value",
+                lblInputLabel: "Label",
+                
+                // Validity & Reliability Localization
+                dlgTitleValidity: "Item Validity Test",
+                dlgVarValidity: "Select Question Items",
+                dlgTitleReliability: "Cronbach's Alpha Reliability Test",
+                dlgVarReliability: "Select Question Items",
+                spssValidityTitle: "Item Validity Test Results (Corrected Item-Total Correlation)",
+                spssReliabilityTitle: "Reliability Analysis Results",
+                lblReliabilityStats: "Reliability Statistics",
+                lblCronbachAlpha: "Cronbach's Alpha",
+                lblNOfItems: "N of Items",
+                lblStatusValid: "VALID",
+                lblStatusInvalid: "INVALID",
+                lblStatusReliable: "RELIABLE",
+                lblStatusUnreliable: "UNRELIABLE",
+                
+                // New Advanced Methods Localization
+                dlgTitleNormality: "Jarque-Bera Normality Test",
+                dlgVarNormality: "Select Variables for Normality Test",
+                dlgTitleMultipleRegression: "Multiple Linear Regression",
+                dlgVarIndeps: "Select Multiple Independent Variables (X)",
+                dlgTitleChiSquare: "Crosstabulation & Chi-Square Test",
+                dlgVarChiRow: "Row Variable (Category)",
+                dlgVarChiCol: "Column Variable (Category)",
+                spssNormalityTitle: "Normality Test (Jarque-Bera)",
+                spssMultRegTitle: "Multiple Regression",
+                spssChiTitle: "Chi-Square Test & Crosstabulation",
+                lblNormNormal: "Normally Distributed",
+                lblNormNotNormal: "Not Normally Distributed",
+                lblDecision: "Decision",
+                
+                // Export & Copy Localizations
+                btnExportAllPDF: "Export All (PDF)",
+                btnCopyImage: "Copy Image",
+                btnCopyData: "Copy Table Data",
+                msgCopySuccess: "Copied to clipboard successfully!",
+                msgCopyError: "Failed to copy. Ensure clipboard permissions are active.",
+
+                // Compute variable translation
+                btnCompute: "Compute Variable",
+                dlgTitleCompute: "Compute Variable",
+                lblTargetVar: "Target Variable",
+                lblNumericExpression: "Numeric Expression",
+                lblVarList: "Variables List:",
+                lblKeypad: "Keypad / Functions:",
+
+                // K-S Test Translation
+                dlgTitleKS: "One-Sample Kolmogorov-Smirnov Test",
+                dlgVarKS: "Select Variables for K-S Test",
+                spssKSTitle: "One-Sample Kolmogorov-Smirnov Test",
+
+                // SPSS Pivot localized titles
+                spssFreqTitle: "Frequency Analysis",
+                spssDescTitle: "Descriptive Statistics",
+                spssOneSampleStats: "One-Sample Statistics",
+                spssOneSampleTest: "One-Sample Test",
+                spssGroupStats: "Group Statistics",
+                spssIndSamplesTest: "Independent Samples Test",
+                spssEqAssumed: "Equal variances assumed",
+                spssEqNotAssumed: "Equal variances not assumed",
+                spssPairedStats: "Paired Samples Statistics",
+                spssPairedCorr: "Paired Samples Correlations",
+                spssPairedTest: "Paired Samples Test",
+                spssCorrelationTitle: "Correlations",
+                spssModelSummary: "Model Summary",
+                spssANOVA: "ANOVA",
+                spssCoefficients: "Coefficients",
+                spssConstant: "(Constant)",
+                spssScatterNote: "Scatter Plot"
+            }
+        };
+
+        function t(key) {
+            return langDict[currentLang][key] || key;
+        }
+
+        // --- STREAMING_CHUNK: Localizing UI Language ---
+        function changeLanguage(langCode) {
+            currentLang = langCode;
+            
+            // Toggle Active Classes on UI Lang buttons
+            document.getElementById('lang-id').className = langCode === 'id' ? "px-2.5 py-1 text-xs font-bold rounded transition-all bg-blue-600 text-white" : "px-2.5 py-1 text-xs font-bold rounded transition-all text-slate-400 hover:text-slate-200";
+            document.getElementById('lang-en').className = langCode === 'en' ? "px-2.5 py-1 text-xs font-bold rounded transition-all bg-blue-600 text-white" : "px-2.5 py-1 text-xs font-bold rounded transition-all text-slate-400 hover:text-slate-200";
+
+            // Update UI elements
+            document.getElementById('headerSubtitle').innerText = t('subtitle');
+            document.getElementById('legendScaleTitle').innerText = t('legendScale');
+            document.getElementById('lblNominal').innerText = t('scaleNominal');
+            document.getElementById('lblOrdinal').innerText = t('scaleOrdinal');
+            document.getElementById('lblInterval').innerText = t('scaleInterval');
+            document.getElementById('lblRatio').innerText = t('scaleRatio');
+            
+            // Ribbon Tab Buttons
+            document.getElementById('tab-data-tab').querySelector('span').innerText = t('menuData');
+            document.getElementById('tab-analyze-tab').querySelector('span').innerText = t('menuAnalyze');
+            document.getElementById('tab-samples-tab').querySelector('span').innerText = t('menuSamples');
+
+            // Quick Buttons / Ribbon content
+            document.getElementById('btnImportData').innerText = t('btnImportData');
+            document.getElementById('btnRowPlus').innerText = t('btnRowPlus');
+            document.getElementById('btnColPlus').innerText = t('btnColPlus');
+            document.getElementById('btnEmptyGrid').innerText = t('btnEmptyGrid');
+            
+            document.getElementById('btnAnFreq').innerText = t('btnAnFreq');
+            document.getElementById('btnAnDesc').innerText = t('btnAnDesc');
+            document.getElementById('btnAnOneT').innerText = t('btnAnOneT');
+            document.getElementById('btnAnIndT').innerText = t('btnAnIndT');
+            document.getElementById('btnAnPairT').innerText = t('btnAnPairT');
+            document.getElementById('btnAnAnova').innerText = t('btnAnAnova');
+            document.getElementById('btnAnCorr').innerText = t('btnAnCorr');
+            document.getElementById('btnAnReg').innerText = t('btnAnReg');
+            document.getElementById('btnAnVal').innerText = t('btnAnVal');
+            document.getElementById('btnAnRel').innerText = t('btnAnRel');
+            document.getElementById('btnAnScatter').innerText = t('btnAnScatter');
+            document.getElementById('btnAnNorm').innerText = t('btnAnNorm');
+            document.getElementById('btnAnMultReg').innerText = t('btnAnMultReg');
+            document.getElementById('btnAnChi').innerText = t('btnAnChi');
+            document.getElementById('btnAnKS').querySelector('span').innerText = currentLang === 'id' ? 'Uji K-S 1 Sampel' : 'One-Sample K-S';
+            
+            document.getElementById('btnSample1').innerText = t('btnSample1');
+            document.getElementById('btnSample2').innerText = t('btnSample2');
+            document.getElementById('btnSample3').innerText = t('btnSample3');
+            document.getElementById('btnSample4').innerText = t('btnSample4');
+
+            document.getElementById('lblGridTitle').innerText = t('lblGridTitle');
+            document.getElementById('lblGridHelp').innerText = t('lblGridHelp');
+            document.getElementById('lblOutputTitle').innerText = t('lblOutputTitle');
+            document.getElementById('btnHidePanel').innerText = t('btnHidePanel');
+            
+            if (document.getElementById('btnCompute')) {
+                document.getElementById('btnCompute').querySelector('span').innerText = t('btnCompute');
+            }
+            if (document.getElementById('btnExportAllPDF')) {
+                document.getElementById('btnExportAllPDF').querySelector('span').innerText = t('btnExportAllPDF');
+            }
+            if (document.getElementById('outputEmptyState')) {
+                document.getElementById('lblEmptyStateText').innerText = t('lblEmptyStateText');
+            }
+            document.getElementById('lblMsgBoxHeader').innerText = t('lblMsgBoxHeader');
+            document.getElementById('btnMsgUnderstand').innerText = t('btnMsgUnderstand');
+            
+            // Modal Config Variable labels
+            document.getElementById('lblModalVarConfig').innerText = t('lblModalVarConfig');
+            document.getElementById('lblModalVarName').innerText = t('lblModalVarName');
+            document.getElementById('lblModalVarScale').innerText = t('lblModalVarScale');
+            document.getElementById('scaleNominal').innerText = t('scaleNominal');
+            document.getElementById('scaleOrdinal').innerText = t('scaleOrdinal');
+            document.getElementById('scaleInterval').innerText = t('scaleInterval');
+            document.getElementById('scaleRatio').innerText = t('scaleRatio');
+            document.getElementById('descNominal').innerText = t('descNominal');
+            document.getElementById('descOrdinal').innerText = t('descOrdinal');
+            document.getElementById('descInterval').innerText = t('descInterval');
+            document.getElementById('descRatio').innerText = t('descRatio');
+            document.getElementById('btnModalCancel').innerText = t('btnModalCancel');
+            document.getElementById('btnModalSave').innerText = t('btnModalSave');
+            
+            document.getElementById('btnDialogCancel').innerText = t('btnDialogCancel');
+            
+            // Value labels section
+            document.getElementById('lblValueLabels').innerText = t('lblValueLabels');
+            document.getElementById('lblInputVal').innerText = t('lblInputVal');
+            document.getElementById('lblInputLabel').innerText = t('lblInputLabel');
+
+            // Rerender table to apply localization changes to column headers
+            renderTable();
+        }
+
+        // --- RIBBON TABS SWITCHING ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.ribbon-tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.ribbon-content').forEach(content => content.classList.add('hidden'));
+
+            document.getElementById('tab-' + tabId).classList.add('active');
+            document.getElementById(tabId).classList.remove('hidden');
+        }
+
+        // --- DATA STATE ---
+        let numRows = 20;
+        let numCols = 6;
+        let data = Array.from({length: numRows}, () => Array(numCols).fill(''));
+        
+        let variables = Array.from({length: numCols}, (_, i) => ({
+            name: `VAR${String(i+1).padStart(3, '0')}`,
+            scale: 'Ratio',
+            valueLabels: {} // Format: { "1": "Laki-laki", "2": "Perempuan" }
+        }));
+        
+        let currentDialogCallback = null;
+        let tempValueLabels = {}; // Tempat penyimpanan sementara saat mengedit di modal
+
+        // --- UTILITIES ---
+        function showMsg(text, isSuccess = false) {
+            document.getElementById('msgBoxText').innerText = text;
+            const container = document.getElementById('msgBoxIconColor');
+            const icon = document.getElementById('msgBoxIcon');
+            
+            if (isSuccess) {
+                container.className = "flex items-center gap-3 mb-4 text-emerald-600";
+                icon.className = "fa-solid fa-circle-check text-2xl";
+            } else {
+                container.className = "flex items-center gap-3 mb-4 text-rose-600";
+                icon.className = "fa-solid fa-circle-exclamation text-2xl";
+            }
+            
+            document.getElementById('msgBox').classList.remove('hidden');
+            setTimeout(() => document.getElementById('msgBoxContent').classList.remove('scale-95'), 10);
+        }
+        function closeMsgBox() {
+            document.getElementById('msgBoxContent').classList.add('scale-95');
+            setTimeout(() => document.getElementById('msgBox').classList.add('hidden'), 200);
+        }
+
+        // Return corresponding icon element based on scale
+        function getScaleIcon(scale) {
+            switch(scale) {
+                case 'Nominal': return `<i class="fa-solid fa-tags text-emerald-500" title="${t('scaleNominal')}"></i>`;
+                case 'Ordinal': return `<i class="fa-solid fa-signal text-amber-500" title="${t('scaleOrdinal')}"></i>`;
+                case 'Interval': return `<i class="fa-solid fa-calculator text-sky-500" title="${t('scaleInterval')}"></i>`;
+                case 'Ratio': return `<i class="fa-solid fa-ruler text-violet-500" title="${t('scaleRatio')}"></i>`;
+                default: return `<i class="fa-solid fa-ruler text-violet-500" title="${t('scaleRatio')}"></i>`;
+            }
+        }
+
+        // --- STREAMING_CHUNK: Handling File Import Operations ---
+        // --- FILE IMPORT SYSTEM (XLSX, CSV, TXT) ---
+        function triggerFileImport() {
+            document.getElementById('fileImportInput').click();
+        }
+
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const arrBuffer = e.target.result;
+                try {
+                    const workbook = XLSX.read(arrBuffer, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const parsedData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    if (parsedData.length === 0) {
+                        showMsg("File kosong atau tidak dapat diuraikan.");
+                        return;
+                    }
+
+                    let startRowIdx = 0;
+                    let importedHeaders = [];
+                    const firstRow = parsedData[0];
+                    const hasHeaders = firstRow.some(cell => typeof cell === 'string' && isNaN(cell));
+                    
+                    if (hasHeaders) {
+                        importedHeaders = firstRow.map(h => String(h).trim().replace(/\s+/g, '_'));
+                        startRowIdx = 1;
+                    } else {
+                        importedHeaders = firstRow.map((_, i) => `VAR${String(i+1).padStart(3, '0')}`);
+                    }
+
+                    numCols = importedHeaders.length;
+                    variables = importedHeaders.map((name, i) => {
+                        let isNumeric = true;
+                        for (let r = startRowIdx; r < Math.min(parsedData.length, startRowIdx + 10); r++) {
+                            const val = parseFloat(parsedData[r]?.[i]);
+                            if (parsedData[r]?.[i] !== undefined && parsedData[r]?.[i] !== '' && isNaN(val)) {
+                                isNumeric = false;
+                                break;
+                            }
+                        }
+                        return { name: name, scale: isNumeric ? 'Ratio' : 'Nominal', valueLabels: {} };
+                    });
+
+                    const importedRows = parsedData.slice(startRowIdx);
+                    numRows = Math.max(importedRows.length, 20);
+                    data = Array.from({length: numRows}, () => Array(numCols).fill(''));
+                    
+                    importedRows.forEach((row, rIdx) => {
+                        for (let cIdx = 0; cIdx < numCols; cIdx++) {
+                            data[rIdx][cIdx] = row[cIdx] !== undefined ? String(row[cIdx]).trim() : '';
+                        }
+                    });
+
+                    renderTable();
+                    showMsg(currentLang === 'id' ? `Berhasil mengimpor ${importedRows.length} baris data!` : `Successfully imported ${importedRows.length} rows of data!`, true);
+                } catch (error) {
+                    console.error(error);
+                    showMsg("Gagal memproses file. Pastikan format file benar.");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = "";
+        }
+
+        // --- STREAMING_CHUNK: Parsing Spreadsheet Pastes ---
+        // --- PASTE HANDLER FOR DIRECT EXCEL / GOOGLE SHEETS IMPORT ---
+        function handlePaste(e, startRow, startCol) {
+            e.preventDefault(); // Mencegah teks mentah tertumpuk di dalam satu input tunggal
+            
+            // Ambil data teks dari clipboard
+            let clipboardData = (e.clipboardData || window.clipboardData).getData('text');
+            if (!clipboardData) return;
+
+            // Memisahkan baris data
+            let rows = clipboardData.split(/\r?\n/);
+            // Hapus baris kosong di bagian akhir jika ada
+            if (rows.length > 0 && rows[rows.length - 1] === '') {
+                rows.pop();
+            }
+
+            if (rows.length === 0) return;
+
+            let maxPasteRow = startRow + rows.length;
+            let maxPasteCol = startCol;
+
+            // Hitung jangkauan kolom maksimum dari data yang disalin
+            rows.forEach(row => {
+                let cols = row.split('\t');
+                if (startCol + cols.length > maxPasteCol) {
+                    maxPasteCol = startCol + cols.length;
+                }
+            });
+
+            // Ekpansi baris grid secara dinamis jika jumlah baris paste melebihi grid saat ini
+            while (numRows < maxPasteRow) {
+                numRows++;
+                data.push(Array(numCols).fill(''));
+            }
+
+            // Ekspansi kolom grid secara dinamis jika jumlah kolom paste melebihi grid saat ini
+            while (numCols < maxPasteCol) {
+                numCols++;
+                variables.push({
+                    name: `VAR${String(numCols).padStart(3, '0')}`,
+                    scale: 'Ratio',
+                    valueLabels: {}
+                });
+                data.forEach(r => r.push(''));
+            }
+
+            // Tempelkan data ke dalam array sel penampung
+            for (let i = 0; i < rows.length; i++) {
+                let cols = rows[i].split('\t');
+                for (let j = 0; j < cols.length; j++) {
+                    data[startRow + i][startCol + j] = cols[j].trim();
+                }
+            }
+
+            // Gambar ulang tabel data grid editor
+            renderTable();
+            showMsg(
+                currentLang === 'id' 
+                    ? "Berhasil menempelkan (*paste*) data spreadsheet dengan rapi!" 
+                    : "Spreadsheet data pasted and formatted cleanly!", 
+                true
+            );
+        }
+
+        // --- DATA GRID RENDERING ---
+        function renderTable() {
+            const table = document.getElementById('dataTable');
+            let html = '<thead><tr><th class="w-12"></th>';
+            
+            variables.forEach((v, i) => {
+                let icon = getScaleIcon(v.scale);
+                html += `
+                <th onclick="openVarConfig(${i})" class="hover:bg-slate-200 transition-colors">
+                    <div class="flex items-center justify-center gap-1.5">
+                        ${icon}
+                        <span class="font-bold text-slate-800">${v.name}</span>
+                        <i class="fa-solid fa-circle-info text-[10px] text-slate-400"></i>
+                    </div>
+                </th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            for (let r = 0; r < numRows; r++) {
+                html += `<tr><td class="row-num">${r + 1}</td>`;
+                for (let c = 0; c < numCols; c++) {
+                    html += `<td><input type="text" value="${data[r][c]}" onchange="updateData(${r}, ${c}, this.value)" onfocus="this.select()" onpaste="handlePaste(event, ${r}, ${c})"></td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+
+        function updateData(r, c, val) { data[r][c] = val; }
+
+        // --- STREAMING_CHUNK: Managing Variable Configuration Modal ---
+        // --- CUSTOM VAR CONFIG DIALOG & VALUE LABELS (SPSS VALUE LABELS) ---
+        function openVarConfig(colIndex) {
+            const v = variables[colIndex];
+            document.getElementById('cfgVarIndex').value = colIndex;
+            document.getElementById('cfgVarName').value = v.name;
+            
+            // Salin value labels ke objek penampung sementara
+            tempValueLabels = JSON.parse(JSON.stringify(v.valueLabels || {}));
+            
+            const radios = document.getElementsByName('cfgVarScale');
+            radios.forEach(radio => {
+                if (radio.value === v.scale) {
+                    radio.checked = true;
+                }
+            });
+
+            // Bersihkan input label nilai
+            document.getElementById('cfgValInput').value = "";
+            document.getElementById('cfgLabelInput').value = "";
+
+            renderValueLabelsList();
+
+            document.getElementById('varConfigModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('varConfigContent').classList.remove('scale-95'), 10);
+        }
+
+        // Tampilkan daftar label nilai di modal konfigurasi
+        function renderValueLabelsList() {
+            const container = document.getElementById('valueLabelsList');
+            container.innerHTML = "";
+            const keys = Object.keys(tempValueLabels).sort();
+            
+            if (keys.length === 0) {
+                container.innerHTML = `<span class="text-slate-400 italic">${currentLang === 'id' ? 'Belum ada label nilai.' : 'No value labels defined.'}</span>`;
+                return;
+            }
+
+            keys.forEach(val => {
+                const label = tempValueLabels[val];
+                const item = document.createElement('div');
+                item.className = "flex justify-between items-center bg-white border border-slate-200 px-3 py-1.5 rounded shadow-sm";
+                item.innerHTML = `
+                    <span class="font-medium text-slate-800"><span class="text-blue-600 font-bold">${val}</span> = "${label}"</span>
+                    <button onclick="removeValueLabel('${val}')" type="button" class="text-rose-500 hover:text-rose-700 text-xs"><i class="fa-solid fa-trash"></i></button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // Tambah pemetaan Nilai -> Label ke objek sementara
+        function addValueLabel() {
+            const valInput = document.getElementById('cfgValInput').value.trim();
+            const labelInput = document.getElementById('cfgLabelInput').value.trim();
+
+            if (valInput === "" || labelInput === "") {
+                showMsg(currentLang === 'id' ? "Nilai dan Label tidak boleh kosong!" : "Value and Label cannot be empty!");
+                return;
+            }
+
+            tempValueLabels[valInput] = labelInput;
+            document.getElementById('cfgValInput').value = "";
+            document.getElementById('cfgLabelInput').value = "";
+            renderValueLabelsList();
+        }
+
+        // Hapus salah satu pemetaan label nilai
+        function removeValueLabel(val) {
+            delete tempValueLabels[val];
+            renderValueLabelsList();
+        }
+
+        function closeVarConfig() {
+            document.getElementById('varConfigContent').classList.add('scale-95');
+            setTimeout(() => document.getElementById('varConfigModal').classList.add('hidden'), 200);
+        }
+
+        function saveVarConfig() {
+            const idx = parseInt(document.getElementById('cfgVarIndex').value);
+            const newName = document.getElementById('cfgVarName').value.trim();
+            const checkedRadio = document.querySelector('input[name="cfgVarScale"]:checked');
+            
+            if (!newName) {
+                return showMsg(t('lblModalVarName') + " !");
+            }
+            
+            variables[idx].name = newName;
+            if (checkedRadio) {
+                variables[idx].scale = checkedRadio.value;
+            }
+            
+            // Simpan label nilai dari objek sementara ke variabel utama
+            variables[idx].valueLabels = JSON.parse(JSON.stringify(tempValueLabels));
+            
+            closeVarConfig();
+            renderTable();
+        }
+
+        // --- UTILITY ACTION METHODS ---
+        function addRow() {
+            numRows++;
+            data.push(Array(numCols).fill(''));
+            renderTable();
+        }
+
+        function closeDialog() {
+            document.getElementById('dynamicDialog').classList.add('hidden');
+            currentDialogCallback = null;
+        }
+
+        // --- STREAMING_CHUNK: Defining Matrix Mathematics Helpers ---
+        // MATRIX MATH HELPERS FOR MULTIPLE REGRESSION
+        function matrixTranspose(A) {
+            return A[0].map((_, colIndex) => A.map(row => row[colIndex]));
+        }
+
+        // Perbanyakan matriks
+        function matrixMultiply(A, B) {
+            let rA = A.length, cA = A[0].length, rB = B.length, cB = B[0].length;
+            let out = Array.from({length: rA}, () => Array(cB).fill(0));
+            for (let i = 0; i < rA; i++) {
+                for (let j = 0; j < cB; j++) {
+                    let sum = 0;
+                    for (let k = 0; k < cA; k++) {
+                        sum += A[i][k] * B[k][j];
+                    }
+                    out[i][j] = sum;
+                }
+            }
+            return out;
+        }
+
+        // Inversi matriks Gauss-Jordan
+        function matrixInvert(A) {
+            let n = A.length;
+            let C = Array.from({length: n}, (_, i) => {
+                let row = [...A[i]];
+                let id = Array(n).fill(0);
+                id[i] = 1;
+                return row.concat(id);
+            });
+            for (let i = 0; i < n; i++) {
+                let maxEl = Math.abs(C[i][i]);
+                let maxRow = i;
+                for (let k = i + 1; k < n; k++) {
+                    if (Math.abs(C[k][i]) > maxEl) {
+                        maxEl = Math.abs(C[k][i]);
+                        maxRow = k;
+                    }
+                }
+                if (maxEl < 1e-12) return null; // Matriks singular (kolinearitas)
+                
+                let temp = C[i]; C[i] = C[maxRow]; C[maxRow] = temp;
+                
+                let pivot = C[i][i];
+                for (let j = i; j < 2 * n; j++) {
+                    C[i][j] /= pivot;
+                }
+                for (let k = 0; k < n; k++) {
+                    if (k !== i) {
+                        let factor = C[k][i];
+                        for (let j = i; j < 2 * n; j++) {
+                            C[k][j] -= factor * C[i][j];
+                        }
+                    }
+                }
+            }
+            return C.map(row => row.slice(n));
+        }
+
+        // SPSS COMPUTE FUNCTIONS: MEAN AND SUM EXACT IMPLEMENTATION
+        function mean_spss(minValid, ...args) {
+            let validArgs = args.filter(x => x !== "" && x !== null && x !== undefined && !isNaN(parseFloat(x))).map(parseFloat);
+            if (validArgs.length < minValid) return NaN;
+            let sum = validArgs.reduce((a, b) => a + b, 0);
+            return sum / validArgs.length;
+        }
+
+        // Formatting Helper to format decimals exactly like SPSS (e.g., "0.332" -> ".332", "0.000" -> ".000")
+        function formatSPSSDecimal(val, places = 3) {
+            if (val === null || val === undefined || isNaN(val)) return "";
+            let num = parseFloat(val);
+            let str = num.toFixed(places);
+            if (Math.abs(num) < 1) {
+                if (num >= 0) {
+                    str = str.substring(1); // strip leading "0" -> ".xxx"
+                } else {
+                    str = "-" + str.substring(2); // strip leading "-0" -> "-.xxx"
+                }
+            }
+            return str;
+        }
+
+        function sum_spss(minValid, ...args) {
+            let validArgs = args.filter(x => x !== "" && x !== null && x !== undefined && !isNaN(parseFloat(x))).map(parseFloat);
+            if (validArgs.length < minValid) return NaN;
+            return validArgs.reduce((a, b) => a + b, 0);
+        }
+
+        function addCol() {
+            numCols++;
+            variables.push({ name: `VAR${String(numCols).padStart(3, '0')}`, scale: 'Ratio', valueLabels: {} });
+            data.forEach(row => row.push(''));
+            renderTable();
+        }
+
+        function clearData() {
+            if(confirm(t('confirmClear'))) {
+                data = Array.from({length: numRows}, () => Array(numCols).fill(''));
+                renderTable();
+            }
+        }
+
+        // --- DATA EXTRACTION ---
+        function getRawColumn(colIndex) {
+            let list = [];
+            for (let r = 0; r < numRows; r++) {
+                let val = data[r][colIndex]?.toString().trim();
+                if (val !== undefined && val !== '') list.push(val);
+            }
+            return list;
+        }
+
+        function getNumericColumn(colIndex) {
+            let nums = [];
+            for (let r = 0; r < numRows; r++) {
+                let val = parseFloat(data[r][colIndex]);
+                if (!isNaN(val)) nums.push(val);
+            }
+            return nums;
+        }
+
+        function getPairedNumeric(colIndex1, colIndex2) {
+            let arr1 = [], arr2 = [];
+            for (let r = 0; r < numRows; r++) {
+                let v1 = parseFloat(data[r][colIndex1]);
+                let v2 = parseFloat(data[r][colIndex2]);
+                if (!isNaN(v1) && !isNaN(v2)) {
+                    arr1.push(v1);
+                    arr2.push(v2);
+                }
+            }
+            return { x: arr1, y: arr2 };
+        }
+
+        function getGroupedData(valColIndex, groupColIndex) {
+            let groups = {};
+            for (let r = 0; r < numRows; r++) {
+                let val = parseFloat(data[r][valColIndex]);
+                let group = data[r][groupColIndex]?.toString().trim();
+                
+                // Konversikan grup berkategori angka ke label nilai kustom jika tersedia
+                const labels = variables[groupColIndex].valueLabels;
+                if (labels && labels[group] !== undefined) {
+                    group = `${group} (${labels[group]})`;
+                }
+
+                if (!isNaN(val) && group !== '') {
+                    if (!groups[group]) groups[group] = [];
+                    groups[group].push(val);
+                }
+            }
+            return groups;
+        }
+
+        // --- STREAMING_CHUNK: Laying Out Output Pane Controls ---
+        // --- OUTPUT PANEL LOGIC (RESIZABLE & SHOW/HIDE) ---
+        function showOutputPanel() {
+            const resizer = document.getElementById('resizer');
+            const outputView = document.getElementById('outputViewContainer');
+            const dataView = document.getElementById('dataViewContainer');
+            
+            if (resizer.classList.contains('hidden')) {
+                resizer.classList.remove('hidden');
+                outputView.classList.remove('hidden');
+                
+                dataView.style.flex = "0 0 55%";
+                outputView.style.width = "45%";
+                outputView.style.flex = "none";
+            }
+        }
+
+        function clearOutput() {
+            document.getElementById('outputArea').innerHTML = `
+                <div class="text-center text-slate-400 mt-16" id="outputEmptyState">
+                    <i class="fa-solid fa-print text-5xl mb-3 text-slate-300"></i>
+                    <p class="text-sm font-medium" id="lblEmptyStateText">${t('lblEmptyStateText')}</p>
+                </div>`;
+            
+            document.getElementById('resizer').classList.add('hidden');
+            document.getElementById('outputViewContainer').classList.add('hidden');
+            document.getElementById('dataViewContainer').style.flex = "1";
+        }
+
+        // --- EXPORT TO IMAGE SYSTEM (html2canvas) ---
+        function exportBlockToImage(blockId, filename) {
+            const element = document.getElementById(blockId);
+            if (!element) return;
+            
+            const toolbar = element.querySelector('.output-toolbar');
+            if (toolbar) toolbar.style.display = 'none';
+
+            html2canvas(element, {
+                backgroundColor: '#ffffff',
+                scale: 2 
+            }).then(canvas => {
+                if (toolbar) toolbar.style.display = 'flex';
+                
+                const link = document.createElement('a');
+                link.download = filename + '.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }).catch(err => {
+                if (toolbar) toolbar.style.display = 'flex';
+                console.error("Gagal mengekspor gambar:", err);
+                showMsg("Gagal menyimpan gambar.");
+            });
+        }
+
+        // --- EXPORT TO PDF SYSTEM ---
+        function exportBlockToPDF(blockId, filename) {
+            const { jsPDF } = window.jspdf;
+            const element = document.getElementById(blockId);
+            if (!element) return;
+            
+            const toolbar = element.querySelector('.output-toolbar');
+            if (toolbar) toolbar.style.display = 'none';
+
+            html2canvas(element, {
+                backgroundColor: '#ffffff',
+                scale: 2
+            }).then(canvas => {
+                if (toolbar) toolbar.style.display = 'flex';
+                
+                const imgData = canvas.toDataURL('image/png');
+                
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const imgWidth = 190; 
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+                pdf.save(filename + '.pdf');
+            }).catch(err => {
+                if (toolbar) toolbar.style.display = 'flex';
+                console.error("Gagal mengekspor PDF:", err);
+                showMsg("Gagal memproses dokumen PDF.");
+            });
+        }
+
+        // Mengekspor semua blok di dalam output area ke dalam 1 file PDF gabungan
+        function exportAllToPDF() {
+            const { jsPDF } = window.jspdf;
+            const outputArea = document.getElementById('outputArea');
+            const blocks = outputArea.querySelectorAll('[id^="block_"]');
+            
+            if (blocks.length === 0) {
+                showMsg(currentLang === 'id' ? "Tidak ada hasil analisis yang aktif untuk diekspor." : "No analysis results are active to export.");
+                return;
+            }
+
+            const toolbars = outputArea.querySelectorAll('.output-toolbar');
+            toolbars.forEach(tb => tb.style.display = 'none');
+
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgWidth = 190;
+            let currentBlockIdx = 0;
+
+            function processNextBlock() {
+                if (currentBlockIdx >= blocks.length) {
+                    pdf.save('WebStat_Pro_Laporan_Analisis.pdf');
+                    toolbars.forEach(tb => tb.style.display = 'flex');
+                    return;
+                }
+
+                const currentBlock = blocks[currentBlockIdx];
+                html2canvas(currentBlock, {
+                    backgroundColor: '#ffffff',
+                    scale: 2
+                }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                    if (currentBlockIdx > 0) {
+                        pdf.addPage();
+                    }
+
+                    pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+                    currentBlockIdx++;
+                    processNextBlock();
+                }).catch(err => {
+                    console.error("Kesalahan pemrosesan halaman gabungan:", err);
+                    toolbars.forEach(tb => tb.style.display = 'flex');
+                    showMsg("Gagal menggabungkan beberapa halaman PDF.");
+                });
+            }
+
+            processNextBlock();
+        }
+
+        // --- CLIPBOARD ACTIONS: COPY IMAGE & COPY TABLE TO EXCEL ---
+        function copyBlockAsImage(blockId) {
+            const element = document.getElementById(blockId);
+            if (!element) return;
+            
+            const toolbar = element.querySelector('.output-toolbar');
+            if (toolbar) toolbar.style.display = 'none';
+
+            html2canvas(element, {
+                backgroundColor: '#ffffff',
+                scale: 2
+            }).then(canvas => {
+                if (toolbar) toolbar.style.display = 'flex';
+                
+                canvas.toBlob(blob => {
+                    if (!blob) {
+                        showMsg(t('msgCopyError'));
+                        return;
+                    }
+                    
+                    const item = new ClipboardItem({ "image/png": blob });
+                    navigator.clipboard.write([item])
+                        .then(() => showMsg(t('msgCopySuccess'), true))
+                        .catch(err => {
+                            console.error(err);
+                            showMsg(t('msgCopyError'));
+                        });
+                });
+            }).catch(err => {
+                if (toolbar) toolbar.style.display = 'flex';
+                console.error(err);
+                showMsg(t('msgCopyError'));
+            });
+        }
+
+        function copyBlockTableData(blockId) {
+            const element = document.getElementById(blockId);
+            if (!element) return;
+
+            const tables = element.querySelectorAll('table');
+            if (tables.length === 0) {
+                showMsg(currentLang === 'id' ? "Tidak ada tabel data di blok ini." : "No tabular data found in this block.");
+                return;
+            }
+
+            let tsvContent = "";
+            tables.forEach((table, tIdx) => {
+                if (tIdx > 0) tsvContent += "\n\n"; 
+                
+                const rows = table.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('th, td');
+                    const rowData = [];
+                    cells.forEach(cell => {
+                        let text = cell.innerText.trim().replace(/\r?\n|\r/g, " ");
+                        rowData.push(text);
+                    });
+                    tsvContent += rowData.join("\t") + "\n";
+                });
+            });
+
+            navigator.clipboard.writeText(tsvContent)
+                .then(() => showMsg(t('msgCopySuccess'), true))
+                .catch(err => {
+                    console.error(err);
+                    showMsg(t('msgCopyError'));
+                });
+        }
+
+        // --- PRINTING OUTPUT ENGINE ---
+        function printOutput(title, htmlContent, chartConfig = null) {
+            showOutputPanel();
+
+            let emptyState = document.getElementById('outputEmptyState');
+            if (emptyState) emptyState.remove();
+
+            let uniqueBlockId = 'block_' + Math.random().toString(36).substr(2, 9);
+            let outDiv = document.createElement('div');
+            outDiv.id = uniqueBlockId;
+            outDiv.className = 'mb-10 pb-6 border-b border-slate-200 last:border-none relative group bg-white p-4 rounded-lg shadow-sm border border-slate-100';
+            
+            let cleanFilename = title.replace(/\s+/g, '_');
+
+            let toolbarHtml = `
+                <div class="output-toolbar absolute top-3 right-3 flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-all duration-200 bg-slate-50/95 backdrop-blur-sm p-1 rounded-lg shadow border border-slate-200 z-10 flex-wrap">
+                    <button onclick="copyBlockAsImage('${uniqueBlockId}')" class="px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-white hover:text-blue-700 rounded transition flex items-center gap-1 shadow-sm border border-transparent hover:border-slate-200">
+                        <i class="fa-solid fa-copy text-blue-600"></i> ${t('btnCopyImage')}
+                    </button>
+                    <button onclick="copyBlockTableData('${uniqueBlockId}')" class="px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-white hover:text-emerald-700 rounded transition flex items-center gap-1 shadow-sm border border-transparent hover:border-slate-200">
+                        <i class="fa-solid fa-file-excel text-emerald-600"></i> ${t('btnCopyData')}
+                    </button>
+                    <div class="h-4 w-px bg-slate-300 mx-1"></div>
+                    <button onclick="exportBlockToImage('${uniqueBlockId}', '${cleanFilename}')" class="px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-white hover:text-indigo-700 rounded transition flex items-center gap-1 shadow-sm border border-transparent hover:border-slate-200">
+                        <i class="fa-solid fa-image text-indigo-600"></i> PNG
+                    </button>
+                    <button onclick="exportBlockToPDF('${uniqueBlockId}', '${cleanFilename}')" class="px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-white hover:text-rose-700 rounded transition flex items-center gap-1 shadow-sm border border-transparent hover:border-slate-200">
+                        <i class="fa-solid fa-file-pdf text-rose-600"></i> PDF
+                    </button>
+                </div>
+            `;
+
+            let header = `
+                <div class="flex items-center gap-2 mb-4 text-slate-900 border-b pb-2 border-slate-100 pr-16">
+                    <div class="w-1.5 h-6 bg-blue-700 rounded-sm"></div>
+                    <h3 class="text-base font-bold text-slate-800 tracking-tight">${title}</h3>
+                </div>`;
+            
+            let canvasHtml = '';
+            let canvasId = '';
+            if (chartConfig) {
+                canvasId = 'chart_' + Math.random().toString(36).substr(2, 9);
+                canvasHtml = `<div class="mt-6 relative h-[280px] w-full max-w-[550px] border border-slate-200 rounded p-2 bg-slate-50"><canvas id="${canvasId}"></canvas></div>`;
+            }
+
+            outDiv.innerHTML = toolbarHtml + header + htmlContent + canvasHtml;
+            document.getElementById('outputArea').appendChild(outDiv);
+            outDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+            if (chartConfig && canvasId) {
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                new Chart(ctx, chartConfig);
+            }
+        }
+
+        // --- SPLIT-PANE RESIZING SYSTEM ---
+        const resizer = document.getElementById('resizer');
+        const leftSide = document.getElementById('dataViewContainer');
+        const rightSide = document.getElementById('outputViewContainer');
+        let dragX = 0;
+        let leftWidthStart = 0;
+
+        const mouseDownHandler = function (e) {
+            dragX = e.clientX;
+            leftWidthStart = leftSide.getBoundingClientRect().width;
+
+            document.addEventListener('mousemove', mouseMoveHandler);
+            document.addEventListener('mouseup', mouseUpHandler);
+            resizer.classList.add('bg-blue-600');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        };
+
+        const mouseMoveHandler = function (e) {
+            const dx = e.clientX - dragX;
+            const parentWidth = resizer.parentNode.getBoundingClientRect().width;
+            
+            let newLeftPercent = ((leftWidthStart + dx) / parentWidth) * 100;
+            let newRightPercent = 100 - newLeftPercent;
+
+            if (newLeftPercent > 20 && newRightPercent > 20) {
+                leftSide.style.flex = `0 0 ${newLeftPercent}%`;
+                rightSide.style.width = `${newRightPercent}%`;
+                rightSide.style.flex = 'none';
+            }
+        };
+
+        const mouseUpHandler = function () {
+            document.removeEventListener('mousemove', mouseMoveHandler);
+            document.removeEventListener('mouseup', mouseUpHandler);
+            resizer.classList.remove('bg-blue-600');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        };
+
+        resizer.addEventListener('mousedown', mouseDownHandler);
+
+        // --- SAMPLE DATASETS POPULATION ---
+        function loadSampleDataset(type) {
+            clearOutput();
+            if (type === 'study') {
+                numRows = 12;
+                numCols = 3;
+                variables = [
+                    { name: currentLang === 'id' ? 'Jam_Belajar' : 'Study_Hours', scale: 'Ratio', valueLabels: {} },
+                    { name: currentLang === 'id' ? 'Nilai_Ujian' : 'Exam_Score', scale: 'Ratio', valueLabels: {} },
+                    { name: currentLang === 'id' ? 'IQ_Siswa' : 'Student_IQ', scale: 'Interval', valueLabels: {} }
+                ];
+                data = [
+                    ['2', '55', '98'],
+                    ['3', '62', '100'],
+                    ['5', '68', '105'],
+                    ['6', '74', '102'],
+                    ['8', '80', '110'],
+                    ['10', '85', '115'],
+                    ['11', '89', '112'],
+                    ['12', '92', '118'],
+                    ['14', '96', '120'],
+                    ['15', '98', '122'],
+                    ['4', '65', '101'],
+                    ['7', '78', '108']
+                ];
+            } else if (type === 'diet') {
+                numRows = 10;
+                numCols = 3;
+                variables = [
+                    { name: currentLang === 'id' ? 'Berat_Sebelum' : 'Weight_Pre', scale: 'Ratio', valueLabels: {} },
+                    { name: currentLang === 'id' ? 'Berat_Sesudah' : 'Weight_Post', scale: 'Ratio', valueLabels: {} },
+                    { name: currentLang === 'id' ? 'Nama_Peserta' : 'Participant_Name', scale: 'Nominal', valueLabels: {} }
+                ];
+                data = [
+                    ['85', '82', 'Budi'],
+                    ['92', '89', 'Siti'],
+                    ['78', '76', 'Dewi'],
+                    ['88', '84', 'Joko'],
+                    ['94', '90', 'Rudi'],
+                    ['100', '95', 'Andi'],
+                    ['82', '80', 'Rina'],
+                    ['90', '85', 'Eko'],
+                    ['87', '83', 'Mega'],
+                    ['95', '91', 'Tono']
+                ];
+            } else if (type === 'fertilizer') {
+                numRows = 15;
+                numCols = 2;
+                variables = [
+                    { name: currentLang === 'id' ? 'Tinggi_Tanaman' : 'Plant_Height', scale: 'Ratio', valueLabels: {} },
+                    { name: currentLang === 'id' ? 'Jenis_Pupuk' : 'Fertilizer_Type', scale: 'Nominal', valueLabels: {} }
+                ];
+                data = [
+                    ['12.5', 'Kontrol'],
+                    ['13.1', 'Kontrol'],
+                    ['11.8', 'Kontrol'],
+                    ['12.2', 'Kontrol'],
+                    ['11.5', 'Kontrol'],
+                    ['15.2', 'Pupuk_A'],
+                    ['16.0', 'Pupuk_A'],
+                    ['14.8', 'Pupuk_A'],
+                    ['15.5', 'Pupuk_A'],
+                    ['14.9', 'Pupuk_A'],
+                    ['18.1', 'Pupuk_B'],
+                    ['19.5', 'Pupuk_B'],
+                    ['18.9', 'Pupuk_B'],
+                    ['19.2', 'Pupuk_B'],
+                    ['18.5', 'Pupuk_B']
+                ];
+                if (currentLang === 'en') {
+                    data.forEach(row => {
+                        if (row[1] === 'Kontrol') row[1] = 'Control';
+                        if (row[1] === 'Pupuk_A') row[1] = 'Fert_A';
+                        if (row[1] === 'Pupuk_B') row[1] = 'Fert_B';
+                    });
+                }
+            } else if (type === 'questionnaire') {
+                numRows = 100;
+                numCols = 4;
+                variables = [
+                    { name: 'Kegunaan', scale: 'Interval', valueLabels: {} },
+                    { name: 'Kualitas_Informasi', scale: 'Interval', valueLabels: {} },
+                    { name: 'Kualitas_Interaksi_Pelayanan', scale: 'Interval', valueLabels: {} },
+                    { name: 'Kepuasan_Pengguna', scale: 'Interval', valueLabels: {} }
+                ];
+                
+                // Menghasilkan data simulasi yang mendekati koefisien dunia nyata secara logis
+                data = [];
+                for (let i = 0; i < 100; i++) {
+                    let kegunaan = Math.floor(Math.random() * 15) + 15; // 15-30
+                    let kualitasInfo = Math.floor(Math.random() * 15) + 15;
+                    let kualitasPelayanan = Math.floor(Math.random() * 15) + 15;
+                    
+                    let base = -1.252 + (0.037 * kegunaan) + (0.052 * kualitasInfo) + (0.075 * kualitasPelayanan);
+                    let noise = (Math.random() - 0.5) * 0.4;
+                    let kepuasan = base + noise;
+                    
+                    data.push([
+                        kegunaan.toString(),
+                        kualitasInfo.toString(),
+                        kualitasPelayanan.toString(),
+                        kepuasan.toFixed(3)
+                    ]);
+                }
+            }
+            renderTable();
+            showMsg(currentLang === 'id' ? "Contoh data latihan berhasil dimuat!" : "Sample dataset loaded successfully!", true);
+        }
+
+        // --- ENHANCED DIALOG SYSTEM (SPSS-Style Left & Right split) ---
+        function openDialog(title, fieldsConfig, onRunCallback) {
+            document.getElementById('dialogTitle').innerText = title;
+            const body = document.getElementById('dialogBody');
+            body.innerHTML = ''; 
+
+            let isMultiColumn = fieldsConfig.some(f => f.group === 'stats' || f.group === 'options');
+            
+            let mainContainer = document.createElement('div');
+            if (isMultiColumn) {
+                mainContainer.className = "grid grid-cols-1 md:grid-cols-2 gap-5";
+            } else {
+                mainContainer.className = "flex flex-col gap-4";
+            }
+
+            let leftCol = document.createElement('div');
+            leftCol.className = "flex flex-col gap-4";
+            let rightCol = document.createElement('div');
+            rightCol.className = "flex flex-col gap-4 bg-slate-50 p-3.5 rounded-lg border border-slate-200/60";
+
+            let rightHeader = document.createElement('h3');
+            rightHeader.className = "text-xs font-bold uppercase tracking-wider text-slate-500 border-b pb-1.5 mb-2";
+            rightHeader.innerText = t('lblOptConf');
+            rightCol.appendChild(rightHeader);
+
+            fieldsConfig.forEach(field => {
+                let wrap = document.createElement('div');
+                wrap.className = 'flex flex-col gap-1.5';
+                
+                let label = document.createElement('label');
+                label.className = 'text-xs font-bold uppercase tracking-wider text-slate-600';
+                label.innerText = field.label;
+                
+                if (field.type === 'select') {
+                    wrap.appendChild(label);
+                    let select = document.createElement('select');
+                    select.id = 'dlg_' + field.id;
+                    select.className = 'border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none bg-white shadow-sm transition';
+                    variables.forEach((v, i) => {
+                        let opt = document.createElement('option');
+                        opt.value = i;
+                        let localizedScale = t('scale' + v.scale);
+                        opt.innerText = `${v.name} (${localizedScale})`;
+                        select.appendChild(opt);
+                    });
+                    wrap.appendChild(select);
+                } 
+                else if (field.type === 'number') {
+                    wrap.appendChild(label);
+                    let inp = document.createElement('input');
+                    inp.type = 'number';
+                    inp.step = 'any';
+                    inp.id = 'dlg_' + field.id;
+                    inp.value = field.default !== undefined ? field.default : 0;
+                    inp.className = 'border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none shadow-sm transition';
+                    wrap.appendChild(inp);
+                }
+                else if (field.type === 'checkboxGroup') {
+                    wrap.appendChild(label);
+                    let chkWrap = document.createElement('div');
+                    chkWrap.className = 'border border-slate-300 rounded-lg max-h-44 overflow-y-auto bg-white shadow-sm';
+                    variables.forEach((v, i) => {
+                        let icon = getScaleIcon(v.scale);
+                        let line = document.createElement('label');
+                        line.className = 'flex items-center gap-2.5 text-sm p-2 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-b-0';
+                        line.innerHTML = `<input type="checkbox" name="dlg_${field.id}" value="${i}" class="rounded text-blue-700 w-4 h-4 focus:ring-blue-600"> <span class="text-slate-700 font-medium flex items-center gap-1.5">${icon} ${v.name}</span>`;
+                        chkWrap.appendChild(line);
+                    });
+                    wrap.appendChild(chkWrap);
+                }
+                else if (field.type === 'boolean') {
+                    let line = document.createElement('label');
+                    line.className = 'flex items-center gap-2.5 text-xs p-1.5 hover:bg-white/50 rounded cursor-pointer transition';
+                    line.innerHTML = `<input type="checkbox" id="dlg_${field.id}" ${field.default ? 'checked' : ''} class="rounded text-blue-700 w-4 h-4 focus:ring-blue-600"> <span class="text-slate-700 font-semibold">${field.label}</span>`;
+                    wrap.appendChild(line);
+                }
+
+                if (isMultiColumn && (field.group === 'stats' || field.group === 'options')) {
+                    rightCol.appendChild(wrap);
+                } else {
+                    leftCol.appendChild(wrap);
+                }
+            });
+
+            if (isMultiColumn) {
+                mainContainer.appendChild(leftCol);
+                mainContainer.appendChild(rightCol);
+            } else {
+                mainContainer.appendChild(leftCol);
+            }
+            body.appendChild(mainContainer);
+
+            currentDialogCallback = () => {
+                let results = {};
+                fieldsConfig.forEach(field => {
+                    if (field.type === 'select') {
+                        results[field.id] = parseInt(document.getElementById('dlg_' + field.id).value);
+                    } else if (field.type === 'number') {
+                        results[field.id] = parseFloat(document.getElementById('dlg_' + field.id).value);
+                    } else if (field.type === 'checkboxGroup') {
+                        let checked = document.querySelectorAll(`input[name="dlg_${field.id}"]:checked`);
+                        results[field.id] = Array.from(checked).map(cb => parseInt(cb.value));
+                    } else if (field.type === 'boolean') {
+                        results[field.id] = document.getElementById(`dlg_${field.id}`).checked;
+                    }
+                });
+                
+                let isValid = true;
+                fieldsConfig.forEach(f => {
+                    if (f.type === 'checkboxGroup' && results[f.id].length === 0) {
+                        showMsg(t('errMinCorr'));
+                        isValid = false;
+                    }
+                });
+
+                if(isValid) {
+                    closeDialog();
+                    onRunCallback(results);
+                }
+            };
+
+            document.getElementById('dialogRunBtn').innerText = t('btnDialogRun');
+            document.getElementById('dialogRunBtn').onclick = currentDialogCallback;
+            document.getElementById('dynamicDialog').classList.remove('hidden');
+        }
+
+        // --- ENHANCED COMPUTE DIALOG SYSTEM ---
+        function openComputeDialog() {
+            document.getElementById('targetVarName').value = "";
+            document.getElementById('numericExpr').value = "";
+            
+            // Populate variables list
+            const varListDiv = document.getElementById('computeVarList');
+            varListDiv.innerHTML = "";
+            
+            variables.forEach(v => {
+                const btn = document.createElement('button');
+                btn.type = "button";
+                btn.className = "w-full text-left px-2 py-1.5 hover:bg-blue-50 rounded text-slate-700 hover:text-blue-700 font-semibold transition flex items-center justify-between";
+                btn.innerHTML = `<span>${v.name}</span> <i class="fa-solid fa-arrow-right text-[10px] text-slate-400"></i>`;
+                btn.onclick = () => insertIntoExpr(v.name);
+                varListDiv.appendChild(btn);
+            });
+            
+            // Translate Dialog UI Elements
+            document.getElementById('lblDlgTitleCompute').innerText = t('dlgTitleCompute');
+            document.getElementById('lblTargetVar').innerText = t('lblTargetVar');
+            document.getElementById('lblVarList').innerText = t('lblVarList');
+            document.getElementById('lblNumericExpression').innerText = t('lblNumericExpression');
+            document.getElementById('lblKeypad').innerText = t('lblKeypad');
+            document.getElementById('btnComputeCancel').innerText = t('btnModalCancel');
+            document.getElementById('btnComputeRun').innerText = t('btnDialogRun');
+
+            document.getElementById('computeModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('computeContent').classList.remove('scale-95'), 10);
+        }
+
+        function closeComputeDialog() {
+            document.getElementById('computeContent').classList.add('scale-95');
+            setTimeout(() => document.getElementById('computeModal').classList.add('hidden'), 200);
+        }
+
+        function insertIntoExpr(val) {
+            const textEl = document.getElementById('numericExpr');
+            const start = textEl.selectionStart;
+            const end = textEl.selectionEnd;
+            const currentText = textEl.value;
+            const before = currentText.substring(0, start);
+            const after = currentText.substring(end, currentText.length);
+            
+            textEl.value = before + val + after;
+            textEl.focus();
+            
+            // Put selection point after inserted value
+            const newCursorPos = start + val.length;
+            textEl.setSelectionRange(newCursorPos, newCursorPos);
+        }
+
+        function runCompute() {
+            const targetName = document.getElementById('targetVarName').value.trim();
+            let expression = document.getElementById('numericExpr').value.trim();
+
+            if (!targetName) {
+                showMsg(currentLang === 'id' ? "Nama variabel sasaran harus diisi!" : "Target variable name must be specified!");
+                return;
+            }
+            if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(targetName)) {
+                showMsg(currentLang === 'id' ? "Nama variabel harus diawali huruf dan hanya berisi alfanumerik/underscore!" : "Variable name must start with a letter and contain only alphanumeric/underscore characters!");
+                return;
+            }
+            if (!expression) {
+                showMsg(currentLang === 'id' ? "Ekspresi numerik harus diisi!" : "Numeric expression must be specified!");
+                return;
+            }
+
+            // Find or create target column
+            let targetColIdx = variables.findIndex(v => v.name.toLowerCase() === targetName.toLowerCase());
+            if (targetColIdx === -1) {
+                // Create new column
+                numCols++;
+                variables.push({
+                    name: targetName,
+                    scale: 'Ratio',
+                    valueLabels: {}
+                });
+                data.forEach(row => row.push(''));
+                targetColIdx = numCols - 1;
+            }
+
+            // Prepare variables sorted by name length descending to prevent partial token replacement
+            let sortedVars = variables
+                .map((v, originalIdx) => ({ name: v.name, idx: originalIdx }))
+                .sort((a, b) => b.name.length - a.name.length);
+
+            let successCount = 0;
+
+            for (let r = 0; r < numRows; r++) {
+                let rowExpr = expression;
+                let missingData = false;
+
+                // Replace SUM and MEAN functions with SPSS-Exact JavaScript Equivalents
+                rowExpr = rowExpr.replace(/SUM\s*\.?(\d+)?\s*\(/gi, (match, minVal) => {
+                    let min = minVal ? parseInt(minVal) : 1;
+                    return `sum_spss(${min}, `;
+                });
+                rowExpr = rowExpr.replace(/MEAN\s*\.?(\d+)?\s*\(/gi, (match, minVal) => {
+                    let min = minVal ? parseInt(minVal) : 1;
+                    return `mean_spss(${min}, `;
+                });
+
+                // Replace each variable name with its numeric value or NaN (SPSS Standard)
+                for (let v of sortedVars) {
+                    let cellVal = data[r][v.idx]?.toString().trim();
+                    let numVal = parseFloat(cellVal);
+                    
+                    let testRegex = new RegExp("\\b" + v.name + "\\b");
+                    if (testRegex.test(rowExpr)) {
+                        let replacementValue = (cellVal === "" || isNaN(numVal)) ? "NaN" : numVal;
+                        rowExpr = rowExpr.replace(new RegExp("\\b" + v.name + "\\b", "g"), replacementValue);
+                    }
+                }
+
+                try {
+                    // Create sandbox environment
+                    let evalFn = new Function("sum_spss", "mean_spss", `
+                        try {
+                            let res = (${rowExpr});
+                            return (res === null || res === undefined || isNaN(res) || res === "") ? "" : res;
+                        } catch(e) {
+                            return "";
+                        }
+                    `);
+
+                    let rowResult = evalFn(sum_spss, mean_spss);
+                    
+                    if (rowResult !== "") {
+                        data[r][targetColIdx] = Number.isInteger(rowResult) ? String(rowResult) : Number(rowResult).toFixed(4);
+                        successCount++;
+                    } else {
+                        data[r][targetColIdx] = "";
+                    }
+                } catch (e) {
+                    data[r][targetColIdx] = "";
+                }
+            }
+
+            closeComputeDialog();
+            renderTable();
+            showMsg(
+                currentLang === 'id' 
+                    ? `Penghitungan selesai! Berhasil menghitung variabel '${targetName}' untuk ${successCount} baris.` 
+                    : `Computation complete! Successfully calculated variable '${targetName}' for ${successCount} rows.`,
+                true
+            );
+        }
+
+        // --- STREAMING_CHUNK: Traditional Analysis Tools (Frequency, Descriptives) ---
+        // 0. Analisis Frekuensi (Dengan Penerapan Label Nilai SPSS)
+        function openFrequency() {
+            openDialog(t('dlgTitleFreq'), [
+                { id: 'vars', type: 'checkboxGroup', label: t('dlgVarFreq') },
+                { id: 'cumPct', type: 'boolean', label: t('lblOptCumPercent'), default: true, group: 'options' },
+                { id: 'showChart', type: 'boolean', label: t('lblOptShowChart'), default: false, group: 'options' }
+            ], (res) => {
+                res.vars.forEach(vIdx => {
+                    let d = getRawColumn(vIdx);
+                    let vName = variables[vIdx].name;
+                    let labels = variables[vIdx].valueLabels || {};
+
+                    if (d.length === 0) {
+                        printOutput(`${t('spssFreqTitle')} - ${vName}`, `<p style="color:red">${t('errNoData')}</p>`);
+                        return;
+                    }
+
+                    let totalN = d.length;
+                    let freqMap = {};
+                    d.forEach(val => { freqMap[val] = (freqMap[val] || 0) + 1; });
+
+                    let sortedKeys = Object.keys(freqMap).sort((a, b) => {
+                        let numA = parseFloat(a);
+                        let numB = parseFloat(b);
+                        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                        return a.localeCompare(b);
+                    });
+
+                    let html = `
+                    <div class="spss-output-container">
+                        <div class="spss-output-title">${vName}</div>
+                        <table class="spss-output-table">
+                            <thead>
+                                <tr>
+                                    <th>Kategori / Value</th>
+                                    <th>Frequency</th>
+                                    <th>Percent</th>
+                                    <th>Valid Percent</th>
+                                    ${res.cumPct ? `<th>Cumulative Percent</th>` : ''}
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                    
+                    let cumPercent = 0;
+                    sortedKeys.forEach(key => {
+                        let f = freqMap[key];
+                        let pct = (f / totalN) * 100;
+                        cumPercent += pct;
+                        
+                        let displayKey = labels[key] !== undefined ? `${key} (${labels[key]})` : key;
+                        
+                        html += `<tr>
+                            <td><strong>${displayKey}</strong></td>
+                            <td>${f}</td>
+                            <td>${pct.toFixed(1)}%</td>
+                            <td>${pct.toFixed(1)}%</td>
+                            ${res.cumPct ? `<td>${cumPercent.toFixed(1)}%</td>` : ''}
+                        </tr>`;
+                    });
+
+                    html += `
+                                <tr class="total-row">
+                                    <td><strong>Total</strong></td>
+                                    <td>${totalN}</td>
+                                    <td>100.0%</td>
+                                    <td>100.0%</td>
+                                    ${res.cumPct ? `<td></td>` : ''}
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>`;
+
+                    let chartConfig = null;
+                    if (res.showChart) {
+                        let chartLabels = sortedKeys.map(key => labels[key] !== undefined ? `${key} (${labels[key]})` : key);
+                        
+                        chartConfig = {
+                            type: 'bar',
+                            data: {
+                                labels: chartLabels,
+                                datasets: [{
+                                    label: 'Frequency',
+                                    data: sortedKeys.map(k => freqMap[k]),
+                                    backgroundColor: 'rgba(37, 99, 235, 0.7)',
+                                    borderColor: 'rgba(37, 99, 235, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                            }
+                        };
+                    }
+
+                    printOutput(`${t('spssFreqTitle')} - ${vName}`, html, chartConfig);
+                });
+            });
+        }
+
+        // 1. Analisis Deskriptif (Dengan Opsi Pilih Parameter)
+        function openDescriptive() {
+            openDialog(t('dlgTitleDesc'), [
+                { id: 'vars', type: 'checkboxGroup', label: t('dlgVarAn') },
+                { id: 'optMean', type: 'boolean', label: 'Mean', default: true, group: 'stats' },
+                { id: 'optStd', type: 'boolean', label: 'Std. Deviation', default: true, group: 'stats' },
+                { id: 'optVar', type: 'boolean', label: 'Variance', default: true, group: 'stats' },
+                { id: 'optMin', type: 'boolean', label: 'Minimum', default: true, group: 'stats' },
+                { id: 'optMax', type: 'boolean', label: 'Maximum', default: true, group: 'stats' },
+                { id: 'optSkew', type: 'boolean', label: 'Skewness', default: false, group: 'stats' },
+                { id: 'optKurt', type: 'boolean', label: 'Kurtosis', default: false, group: 'stats' }
+            ], (res) => {
+                let html = `
+                <div class="spss-output-container">
+                    <div class="spss-output-title">${t('spssDescTitle')}</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>N</th>
+                                ${res.optMin ? '<th>Minimum</th>' : ''}
+                                ${res.optMax ? '<th>Maximum</th>' : ''}
+                                ${res.optMean ? '<th>Mean</th>' : ''}
+                                ${res.optStd ? '<th>Std. Deviation</th>' : ''}
+                                ${res.optVar ? '<th>Variance</th>' : ''}
+                                ${res.optSkew ? '<th>Skewness</th>' : ''}
+                                ${res.optKurt ? '<th>Kurtosis</th>' : ''}
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                
+                res.vars.forEach(vIdx => {
+                    let d = getNumericColumn(vIdx);
+                    if (d.length === 0) {
+                        let totalCols = 1 + [res.optMin, res.optMax, res.optMean, res.optStd, res.optVar, res.optSkew, res.optKurt].filter(Boolean).length;
+                        html += `<tr><td>${variables[vIdx].name}</td><td colspan="${totalCols}" style="text-align:center; color:#777;">${t('errNoData')}</td></tr>`;
+                        return;
+                    }
+                    let n = d.length;
+                    let min = ss.min(d);
+                    let max = ss.max(d);
+                    let mean = ss.mean(d);
+                    let std = n > 1 ? ss.sampleStandardDeviation(d) : 0;
+                    let vr = n > 1 ? ss.sampleVariance(d) : 0;
+                    let skew = n > 2 ? jStat.skewness(d) : 0;
+                    let kurt = n > 3 ? jStat.kurtosis(d) : 0;
+
+                    html += `<tr>
+                        <td><strong>${variables[vIdx].name}</strong> <span class="text-[10px] text-slate-400">(${t('scale' + variables[vIdx].scale)})</span></td>
+                        <td>${n}</td>
+                        ${res.optMin ? `<td>${min.toFixed(3)}</td>` : ''}
+                        ${res.optMax ? `<td>${max.toFixed(3)}</td>` : ''}
+                        ${res.optMean ? `<td>${mean.toFixed(4)}</td>` : ''}
+                        ${res.optStd ? `<td>${std.toFixed(4)}</td>` : ''}
+                        ${res.optVar ? `<td>${vr.toFixed(4)}</td>` : ''}
+                        ${res.optSkew ? `<td>${skew.toFixed(3)}</td>` : ''}
+                        ${res.optKurt ? `<td>${kurt.toFixed(3)}</td>` : ''}
+                    </tr>`;
+                });
+                
+                let validList = res.vars.map(vIdx => getNumericColumn(vIdx).length);
+                let validN = validList.length > 0 ? Math.min(...validList) : 0;
+                
+                html += `
+                        <tr class="total-row">
+                            <td><strong>Valid N (listwise)</strong></td>
+                            <td>${validN}</td>
+                            ${res.optMin ? '<td></td>' : ''}
+                            ${res.optMax ? '<td></td>' : ''}
+                            ${res.optMean ? '<td></td>' : ''}
+                            ${res.optStd ? '<td></td>' : ''}
+                            ${res.optVar ? '<td></td>' : ''}
+                            ${res.optSkew ? '<td></td>' : ''}
+                            ${res.optKurt ? '<td></td>' : ''}
+                        </tr>
+                    </tbody>
+                </table>
+                </div>`;
+                printOutput(t('dlgTitleDesc'), html);
+            });
+        }
+
+        // --- STREAMING_CHUNK: Traditional Analysis Tools (T-Tests, ANOVA, Regressions) ---
+        // 2. Uji T Satu Sampel (Dengan Opsi Tingkat Kepercayaan)
+        function openOneSampleT() {
+            openDialog(t('dlgTitleOneT'), [
+                { id: 'varIdx', type: 'select', label: t('dlgVarOneT') },
+                { id: 'testVal', type: 'number', label: t('dlgValOneT'), default: 0 },
+                { id: 'ci', type: 'number', label: t('lblOptConfidence') + ' (%)', default: 95, group: 'options' }
+            ], (res) => {
+                let d = getNumericColumn(res.varIdx);
+                let mu = res.testVal;
+                let vName = variables[res.varIdx].name;
+                let confidence = (res.ci !== undefined && res.ci > 0 && res.ci < 100) ? res.ci : 95;
+
+                if(d.length < 2) return showMsg(`${vName} - ${t('errMinTwo')}`);
+
+                let n = d.length;
+                let mean = ss.mean(d);
+                let std = ss.sampleStandardDeviation(d);
+                let se = std / Math.sqrt(n);
+                let tVal = (mean - mu) / se;
+                let df = n - 1;
+                
+                let p = jStat.studentt.cdf(-Math.abs(tVal), df) * 2;
+                let md = mean - mu;
+
+                let alpha = 1 - (confidence / 100);
+                let tCrit = jStat.studentt.inv(1 - alpha / 2, df);
+                let lowerBound = md - tCrit * se;
+                let upperBound = md + tCrit * se;
+
+                let html = `
+                <div class="spss-output-container">
+                    <div class="spss-output-title">${t('spssOneSampleStats')}</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>N</th>
+                                <th>Mean</th>
+                                <th>Std. Deviation</th>
+                                <th>Std. Error Mean</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>${vName}</strong></td>
+                                <td>${n}</td>
+                                <td>${mean.toFixed(4)}</td>
+                                <td>${std.toFixed(4)}</td>
+                                <td>${se.toFixed(4)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="spss-output-container mt-6">
+                    <div class="spss-output-title">${t('spssOneSampleTest')} (Test Value = ${mu})</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2"></th>
+                                <th colspan="4" style="text-align: center; border-bottom: 0.5px solid #000; padding-bottom: 2px;">Test Value = ${mu}</th>
+                                <th colspan="2" style="text-align: center; border-bottom: 0.5px solid #000; padding-bottom: 2px;">${confidence}% Confidence Interval of the Difference</th>
+                            </tr>
+                            <tr>
+                                <th>t</th>
+                                <th>df</th>
+                                <th>Sig. (2-tailed)</th>
+                                <th>Mean Difference</th>
+                                <th>Lower</th>
+                                <th>Upper</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>${vName}</strong></td>
+                                <td>${tVal.toFixed(3)}</td>
+                                <td>${df}</td>
+                                <td>${p.toFixed(4)}</td>
+                                <td>${md.toFixed(4)}</td>
+                                <td>${lowerBound.toFixed(4)}</td>
+                                <td>${upperBound.toFixed(4)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>`;
+                
+                printOutput(t('dlgTitleOneT'), html);
+            });
+        }
+
+        // 3. Uji T Independen
+        function openIndSampleT() {
+            openDialog(t('dlgTitleIndT'), [
+                { id: 'var1', type: 'select', label: t('dlgVarGroup1') },
+                { id: 'var2', type: 'select', label: t('dlgVarGroup2') },
+                { id: 'ci', type: 'number', label: t('lblOptConfidence') + ' (%)', default: 95, group: 'options' }
+            ], (res) => {
+                if(res.var1 === res.var2) return showMsg(t('errTwoVars'));
+                
+                let d1 = getNumericColumn(res.var1);
+                let d2 = getNumericColumn(res.var2);
+                let v1Name = variables[res.var1].name;
+                let v2Name = variables[res.var2].name;
+                let confidence = (res.ci !== undefined && res.ci > 0 && res.ci < 100) ? res.ci : 95;
+
+                if(d1.length < 2 || d2.length < 2) return showMsg(t('errMinTwo'));
+
+                let n1 = d1.length, n2 = d2.length;
+                let m1 = ss.mean(d1), m2 = ss.mean(d2);
+                let var1 = ss.sampleVariance(d1), var2 = ss.sampleVariance(d2);
+                
+                // BARIS 1: Equal Variances Assumed (Pooled Variances)
+                let pooledVar = ((n1 - 1) * var1 + (n2 - 1) * var2) / (n1 + n2 - 2);
+                let sePooled = Math.sqrt(pooledVar * (1/n1 + 1/n2));
+                let tPooled = (m1 - m2) / sePooled;
+                let dfPooled = n1 + n2 - 2;
+                let pPooled = jStat.studentt.cdf(-Math.abs(tPooled), dfPooled) * 2;
+                
+                let alpha = 1 - (confidence / 100);
+                let tCritPooled = jStat.studentt.inv(1 - alpha / 2, dfPooled);
+                let md = m1 - m2;
+                let lowerPooled = md - tCritPooled * sePooled;
+                let upperPooled = md + tCritPooled * sePooled;
+
+                // BARIS 2: Equal Variances Not Assumed (Welch's T-Test)
+                let seWelch = Math.sqrt((var1 / n1) + (var2 / n2));
+                let tWelch = (m1 - m2) / seWelch;
+                let term1 = var1 / n1;
+                let term2 = var2 / n2;
+                let dfWelch = (term1 + term2) * (term1 + term2) / ( (term1 * term1 / (n1 - 1)) + (term2 * term2 / (n2 - 1)) );
+                let pWelch = jStat.studentt.cdf(-Math.abs(tWelch), dfWelch) * 2;
+                
+                let tCritWelch = jStat.studentt.inv(1 - alpha / 2, dfWelch);
+                let lowerWelch = md - tCritWelch * seWelch;
+                let upperWelch = md + tCritWelch * seWelch;
+
+                let html = `
+                <div class="spss-output-container">
+                    <div class="spss-output-title">${t('spssGroupStats')}</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th>Grup / Group</th>
+                                <th>N</th>
+                                <th>Mean</th>
+                                <th>Std. Deviation</th>
+                                <th>Std. Error Mean</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>${v1Name}</strong></td>
+                                <td>${n1}</td>
+                                <td>${m1.toFixed(4)}</td>
+                                <td>${Math.sqrt(var1).toFixed(4)}</td>
+                                <td>${(Math.sqrt(var1)/Math.sqrt(n1)).toFixed(4)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>${v2Name}</strong></td>
+                                <td>${n2}</td>
+                                <td>${m2.toFixed(4)}</td>
+                                <td>${Math.sqrt(var2).toFixed(4)}</td>
+                                <td>${(Math.sqrt(var2)/Math.sqrt(n2)).toFixed(4)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="spss-output-container mt-6">
+                    <div class="spss-output-title">${t('spssIndSamplesTest')}</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2"></th>
+                                <th colspan="5" style="text-align: center; border-bottom: 0.5px solid #000; padding-bottom: 2px;">t-test for Equality of Means</th>
+                                <th colspan="2" style="text-align: center; border-bottom: 0.5px solid #000; padding-bottom: 2px;">${confidence}% Confidence Interval of the Difference</th>
+                            </tr>
+                            <tr>
+                                <th>t</th>
+                                <th>df</th>
+                                <th>Sig. (2-tailed)</th>
+                                <th>Mean Difference</th>
+                                <th>Std. Error Diff.</th>
+                                <th>Lower</th>
+                                <th>Upper</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>${t('spssEqAssumed')}</strong></td>
+                                <td>${tPooled.toFixed(3)}</td>
+                                <td>${dfPooled}</td>
+                                <td>${pPooled.toFixed(4)}</td>
+                                <td>${md.toFixed(4)}</td>
+                                <td>${sePooled.toFixed(4)}</td>
+                                <td>${lowerPooled.toFixed(4)}</td>
+                                <td>${upperPooled.toFixed(4)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>${t('spssEqNotAssumed')}</strong></td>
+                                <td>${tWelch.toFixed(3)}</td>
+                                <td>${dfWelch.toFixed(2)}</td>
+                                <td>${pWelch.toFixed(4)}</td>
+                                <td>${md.toFixed(4)}</td>
+                                <td>${seWelch.toFixed(4)}</td>
+                                <td>${lowerWelch.toFixed(4)}</td>
+                                <td>${upperWelch.toFixed(4)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>`;
+                
+                printOutput(t('dlgTitleIndT'), html);
+            });
+        }
+
+        // 4. Uji T Berpasangan (Dengan Opsi Tingkat Kepercayaan)
+        function openPairedT() {
+            openDialog(t('dlgTitlePairT'), [
+                { id: 'var1', type: 'select', label: t('dlgVarPre') },
+                { id: 'var2', type: 'select', label: t('dlgVarPost') },
+                { id: 'ci', type: 'number', label: t('lblOptConfidence') + ' (%)', default: 95, group: 'options' }
+            ], (res) => {
+                if(res.var1 === res.var2) return showMsg(t('errTwoVars'));
+
+                let paired = getPairedNumeric(res.var1, res.var2);
+                let x = paired.x, y = paired.y;
+                let n = x.length;
+                let confidence = (res.ci !== undefined && res.ci > 0 && res.ci < 100) ? res.ci : 95;
+
+                if(n < 2) return showMsg(t('errMinPaired'));
+
+                let diffs = [];
+                for(let i=0; i<n; i++) diffs.push(x[i] - y[i]);
+
+                let m1 = ss.mean(x), m2 = ss.mean(y);
+                let std1 = ss.sampleStandardDeviation(x), std2 = ss.sampleStandardDeviation(y);
+                let corr = ss.sampleCorrelation(x, y);
+
+                let meanDiff = ss.mean(diffs);
+                let stdDiff = ss.sampleStandardDeviation(diffs);
+                let seDiff = stdDiff / Math.sqrt(n);
+                
+                let tVal = meanDiff / seDiff;
+                let df = n - 1;
+                let p = jStat.studentt.cdf(-Math.abs(tVal), df) * 2;
+
+                // CI bounds
+                let alpha = 1 - (confidence / 100);
+                let tCrit = jStat.studentt.inv(1 - alpha / 2, df);
+                let lowerBound = meanDiff - tCrit * seDiff;
+                let upperBound = meanDiff + tCrit * seDiff;
+
+                let html = `
+                <div class="spss-output-container">
+                    <div class="spss-output-title">${t('spssPairedStats')}</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Mean</th>
+                                <th>N</th>
+                                <th>Std. Deviation</th>
+                                <th>Std. Error Mean</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Pair 1 &nbsp;&nbsp; ${variables[res.var1].name}</strong></td>
+                                <td>${m1.toFixed(4)}</td>
+                                <td>${n}</td>
+                                <td>${std1.toFixed(4)}</td>
+                                <td>${(std1 / Math.sqrt(n)).toFixed(4)}</td>
+                            </tr>
+                            <tr>
+                                <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>${variables[res.var2].name}</strong></td>
+                                <td>${m2.toFixed(4)}</td>
+                                <td>${n}</td>
+                                <td>${std2.toFixed(4)}</td>
+                                <td>${(std2 / Math.sqrt(n)).toFixed(4)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="spss-output-container mt-6">
+                    <div class="spss-output-title">${t('spssPairedCorr')}</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>N</th>
+                                <th>Correlation</th>
+                                <th>Sig.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Pair 1 &nbsp;&nbsp; ${variables[res.var1].name} & ${variables[res.var2].name}</strong></td>
+                                <td>${n}</td>
+                                <td>${corr.toFixed(3)}</td>
+                                <td>${(1 - jStat.studentt.cdf(Math.abs(corr * Math.sqrt(n - 2) / Math.sqrt(1 - corr * corr)), n - 2) * 2).toFixed(4)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="spss-output-container mt-6">
+                    <div class="spss-output-title">${t('spssPairedTest')}</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2"></th>
+                                <th colspan="3" style="text-align: center; border-bottom: 0.5px solid #000; padding-bottom: 2px;">Paired Differences</th>
+                                <th rowspan="2">t</th>
+                                <th rowspan="2">df</th>
+                                <th rowspan="2">Sig. (2-tailed)</th>
+                            </tr>
+                            <tr>
+                                <th>Mean</th>
+                                <th>Std. Deviation</th>
+                                <th>Std. Error Mean</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Pair 1 &nbsp;&nbsp; ${variables[res.var1].name} - ${variables[res.var2].name}</strong></td>
+                                <td>${meanDiff.toFixed(4)}</td>
+                                <td>${stdDiff.toFixed(4)}</td>
+                                <td>${seDiff.toFixed(4)}</td>
+                                <td>${tVal.toFixed(3)}</td>
+                                <td>${df}</td>
+                                <td>${p.toFixed(4)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>`;
+                
+                printOutput(t('dlgTitlePairT'), html);
+            });
+        }
+
+        // 5. Korelasi (Dengan Opsi Flag Signifikansi)
+        function openCorrelation() {
+            openDialog(t('dlgTitleCorr'), [
+                { id: 'vars', type: 'checkboxGroup', label: t('dlgTitleCorr') },
+                { id: 'flagSig', type: 'boolean', label: t('lblOptFlagSig'), default: true, group: 'options' }
+            ], (res) => {
+                if(res.vars.length < 2) return showMsg(t('errMinCorr'));
+
+                let html = `
+                <div class="spss-output-container">
+                    <div class="spss-output-title">${t('spssCorrelationTitle')}</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th></th>`;
+                
+                res.vars.forEach(vIdx => html += `<th>${variables[vIdx].name}</th>`);
+                html += '</tr></thead><tbody>';
+
+                res.vars.forEach(iIdx => {
+                    let rowsHtml = '';
+                    let firstCell = `<td><strong>${variables[iIdx].name}</strong></td>`;
+                    
+                    // Row 1: Pearson Correlation
+                    rowsHtml += `<tr>${firstCell}<td>Pearson Correlation</td>`;
+                    res.vars.forEach(jIdx => {
+                        if (iIdx === jIdx) {
+                            rowsHtml += `<td>1</td>`;
+                        } else {
+                            let paired = getPairedNumeric(iIdx, jIdx);
+                            if (paired.x.length < 3) {
+                                rowsHtml += `<td>.</td>`;
+                            } else {
+                                let r = ss.sampleCorrelation(paired.x, paired.y);
+                                let tVal = r * Math.sqrt(paired.x.length - 2) / Math.sqrt(1 - r * r);
+                                let p = jStat.studentt.cdf(-Math.abs(tVal), paired.x.length - 2) * 2;
+                                let stars = "";
+                                if (res.flagSig) {
+                                    if (p < 0.01) stars = "<sup>**</sup>";
+                                    else if (p < 0.05) stars = "<sup>*</sup>";
+                                }
+                                rowsHtml += `<td>${r.toFixed(3)}${stars}</td>`;
+                            }
+                        }
+                    });
+                    rowsHtml += '</tr>';
+
+                    // Row 2: Sig (2-tailed)
+                    rowsHtml += `<tr><td></td><td>Sig. (2-tailed)</td>`;
+                    res.vars.forEach(jIdx => {
+                        if (iIdx === jIdx) {
+                            rowsHtml += `<td></td>`;
+                        } else {
+                            let paired = getPairedNumeric(iIdx, jIdx);
+                            let n = paired.x.length;
+                            if (n < 3) {
+                                rowsHtml += `<td>.</td>`;
+                            } else {
+                                let r = ss.sampleCorrelation(paired.x, paired.y);
+                                let tVal = r * Math.sqrt(n - 2) / Math.sqrt(1 - r * r);
+                                let p = jStat.studentt.cdf(-Math.abs(tVal), n - 2) * 2;
+                                rowsHtml += `<td>${p.toFixed(4)}</td>`;
+                            }
+                        }
+                    });
+                    rowsHtml += '</tr>';
+
+                    // Row 3: N
+                    rowsHtml += `<tr><td></td><td>N</td>`;
+                    res.vars.forEach(jIdx => {
+                        let paired = getPairedNumeric(iIdx, jIdx);
+                        rowsHtml += `<td>${paired.x.length}</td>`;
+                    });
+                    rowsHtml += '</tr>';
+
+                    html += rowsHtml;
+                });
+                
+                html += `
+                        </tbody>
+                    </table>
+                    ${res.flagSig ? `
+                    <div class="spss-output-note">**. Correlation is significant at the 0.01 level (2-tailed).</div>
+                    <div class="spss-output-note">*. Correlation is significant at the 0.05 level (2-tailed).</div>
+                    ` : ''}
+                </div>`;
+                
+                printOutput(t('dlgTitleCorr'), html);
+            });
+        }
+
+        // 6. Regresi Linear Sederhana (Dengan Opsi Tampilan Model / ANOVA / Grafik)
+        function openRegression() {
+            openDialog(t('dlgTitleReg'), [
+                { id: 'dep', type: 'select', label: t('dlgVarDep') },
+                { id: 'indep', type: 'select', label: t('dlgVarIndep') },
+                { id: 'showSummary', type: 'boolean', label: t('lblOptModelSummary'), default: true, group: 'options' },
+                { id: 'showAnova', type: 'boolean', label: t('lblOptAnovaReg'), default: true, group: 'options' },
+                { id: 'showPlot', type: 'boolean', label: t('lblOptShowRegPlot'), default: true, group: 'options' }
+            ], (res) => {
+                if(res.dep === res.indep) return showMsg(t('errTwoVars'));
+
+                let paired = getPairedNumeric(res.indep, res.dep); 
+                let x = paired.x, y = paired.y;
+                let n = x.length;
+
+                if(n < 3) return showMsg(t('errMinReg'));
+
+                let dataPairs = x.map((val, i) => [val, y[i]]);
+                
+                let regressionLine = ss.linearRegression(dataPairs); 
+                let rSquared = ss.rSquared(dataPairs, ss.linearRegressionLine(regressionLine));
+                let r = Math.sqrt(rSquared) * Math.sign(regressionLine.m);
+                
+                let meanY = ss.mean(y);
+                let ssTot = ss.sum(y.map(v => Math.pow(v - meanY, 2)));
+                let ssReg = rSquared * ssTot;
+                let ssRes = ssTot - ssReg;
+                
+                let dfReg = 1;
+                let dfRes = n - 2;
+                let msReg = ssReg / dfReg;
+                let msRes = ssRes / dfRes;
+                let F = msReg / msRes;
+                let pModel = 1 - jStat.centralF.cdf(F, dfReg, dfRes);
+
+                let html = '';
+
+                if (res.showSummary) {
+                    html += `
+                    <div class="spss-output-container">
+                        <div class="spss-output-title">${t('spssModelSummary')}</div>
+                        <table class="spss-output-table">
+                            <thead>
+                                <tr>
+                                    <th>Model</th>
+                                    <th>R</th>
+                                    <th>R Square</th>
+                                    <th>Adjusted R Square</th>
+                                    <th>Std. Error of the Estimate</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>1</strong></td>
+                                    <td>${formatSPSSDecimal(Math.abs(r))}</td>
+                                    <td>${formatSPSSDecimal(rSquared)}</td>
+                                    <td>${formatSPSSDecimal(1 - (1-rSquared)*(n-1)/(n-2))}</td>
+                                    <td>${formatSPSSDecimal(Math.sqrt(msRes))}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="spss-output-note">a. Predictors: (Constant), ${variables[res.indep].name}</div>
+                    </div>`;
+                }
+
+                if (res.showAnova) {
+                    html += `
+                    <div class="spss-output-container mt-6">
+                        <div class="spss-output-title">${t('spssANOVA')}<sup>a</sup></div>
+                        <table class="spss-output-table">
+                            <thead>
+                                <tr>
+                                    <th>Model</th>
+                                    <th>Sum of Squares</th>
+                                    <th>df</th>
+                                    <th>Mean Square</th>
+                                    <th>F</th>
+                                    <th>Sig.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Regression</strong></td>
+                                    <td>${ssReg.toFixed(3)}</td>
+                                    <td>${dfReg}</td>
+                                    <td>${msReg.toFixed(3)}</td>
+                                    <td>${F.toFixed(3)}</td>
+                                    <td>${formatSPSSDecimal(pModel)}<sup>b</sup></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Residual</strong></td>
+                                    <td>${ssRes.toFixed(3)}</td>
+                                    <td>${dfRes}</td>
+                                    <td>${msRes.toFixed(3)}</td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                                <tr class="total-row">
+                                    <td><strong>Total</strong></td>
+                                    <td>${ssTot.toFixed(3)}</td>
+                                    <td>${n-1}</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="spss-output-note">a. Dependent Variable: ${variables[res.dep].name}</div>
+                        <div class="spss-output-note">b. Predictors: (Constant), ${variables[res.indep].name}</div>
+                    </div>`;
+                }
+
+                html += `
+                <div class="spss-output-container mt-6">
+                    <div class="spss-output-title">${t('spssCoefficients')}<sup>a</sup></div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2">Model</th>
+                                <th colspan="2" style="text-align: center; border-bottom: 0.5px solid #000; padding-bottom: 2px;">Unstandardized Coefficients</th>
+                                <th rowspan="2">t</th>
+                                <th rowspan="2">Sig.</th>
+                            </tr>
+                            <tr>
+                                <th>B</th>
+                                <th>Std. Error</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>${t('spssConstant')}</strong></td>
+                                <td>${formatSPSSDecimal(regressionLine.b)}</td>
+                                <td>.</td>
+                                <td>.</td>
+                                <td>.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>${variables[res.indep].name}</strong></td>
+                                <td>${formatSPSSDecimal(regressionLine.m)}</td>
+                                <td>.</td>
+                                <td>.</td>
+                                <td>.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="spss-output-note">a. Dependent Variable: ${variables[res.dep].name}</div>
+                </div>`;
+
+                let chartConfig = null;
+                if (res.showPlot) {
+                    let chartData = x.map((val, i) => ({x: val, y: y[i]}));
+                    let lineData = [
+                        {x: ss.min(x), y: regressionLine.m * ss.min(x) + regressionLine.b},
+                        {x: ss.max(x), y: regressionLine.m * ss.max(x) + regressionLine.b}
+                    ];
+
+                    chartConfig = {
+                        type: 'scatter',
+                        data: {
+                            datasets: [
+                                {
+                                    label: currentLang === 'id' ? 'Data Aktual' : 'Actual Data', data: chartData,
+                                    backgroundColor: 'rgba(37, 99, 235, 0.6)', borderColor: 'rgba(37, 99, 235, 1)'
+                                },
+                                {
+                                    type: 'line', label: currentLang === 'id' ? 'Garis Regresi' : 'Regression Line', data: lineData,
+                                    borderColor: 'rgba(239, 68, 68, 1)', borderWidth: 2, pointRadius: 0, fill: false
+                                }
+                            ]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: variables[res.indep].name } }, y: { title: { display: true, text: variables[res.dep].name } } } }
+                    };
+                }
+
+                printOutput(t('dlgTitleReg'), html, chartConfig);
+            });
+        }
+
+        // 7. ANOVA Satu Arah (Dengan Opsi Tampilan Deskriptif)
+        function openAnova() {
+            openDialog(t('dlgTitleAnova'), [
+                { id: 'dep', type: 'select', label: t('dlgVarAnovaDep') },
+                { id: 'group', type: 'select', label: t('dlgVarAnovaGroup') },
+                { id: 'showDesc', type: 'boolean', label: t('lblOptAnovaTable'), default: true, group: 'options' }
+            ], (res) => {
+                if(res.dep === res.group) return showMsg(t('errTwoVars'));
+
+                let groups = getGroupedData(res.dep, res.group);
+                let groupNames = Object.keys(groups);
+                let k = groupNames.length;
+
+                if(k < 2) return showMsg(t('errAnovaGroup'));
+
+                let allData = [];
+                let groupStats = [];
+                
+                groupNames.forEach(g => {
+                    let d = groups[g];
+                    allData = allData.concat(d);
+                    groupStats.push({
+                        name: g, n: d.length, mean: ss.mean(d), std: ss.sampleStandardDeviation(d)
+                    });
+                });
+
+                let N = allData.length;
+                let grandMean = ss.mean(allData);
+
+                let sst = 0, ssw = 0, ssb = 0;
+                allData.forEach(val => sst += Math.pow(val - grandMean, 2));
+
+                groupNames.forEach((g, i) => {
+                    let d = groups[g];
+                    let gMean = groupStats[i].mean;
+                    let n = d.length;
+                    
+                    ssb += n * Math.pow(gMean - grandMean, 2);
+                    d.forEach(val => ssw += Math.pow(val - gMean, 2));
+                });
+
+                let dfb = k - 1;
+                let dfw = N - k;
+                
+                let msb = ssb / dfb;
+                let msw = ssw / dfw;
+                let F = msb / msw;
+                let p = 1 - jStat.centralF.cdf(F, dfb, dfw);
+
+                let html = '';
+
+                if (res.showDesc) {
+                    html += `
+                    <div class="spss-output-container">
+                        <div class="spss-output-title">Descriptives</div>
+                        <table class="spss-output-table">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>N</th>
+                                    <th>Mean</th>
+                                    <th>Std. Deviation</th>
+                                    <th>Std. Error</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                    groupStats.forEach(g => {
+                        html += `<tr><td><strong>${g.name}</strong></td><td>${g.n}</td><td>${g.mean.toFixed(4)}</td><td>${g.std.toFixed(4)}</td><td>${(g.std/Math.sqrt(g.n)).toFixed(4)}</td></tr>`;
+                    });
+                    html += `
+                                <tr class="total-row">
+                                    <td><strong>Total</strong></td>
+                                    <td>${N}</td>
+                                    <td>${grandMean.toFixed(4)}</td>
+                                    <td>${ss.sampleStandardDeviation(allData).toFixed(4)}</td>
+                                    <td>${(ss.sampleStandardDeviation(allData)/Math.sqrt(N)).toFixed(4)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>`;
+                }
+
+                html += `
+                <div class="spss-output-container mt-6">
+                    <div class="spss-output-title">${t('spssANOVA')} (Dependent Variable: ${variables[res.dep].name})</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Sum of Squares</th>
+                                <th>df</th>
+                                <th>Mean Square</th>
+                                <th>F</th>
+                                <th>Sig.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Between Groups</strong></td>
+                                <td>${ssb.toFixed(3)}</td>
+                                <td>${dfb}</td>
+                                <td>${msb.toFixed(3)}</td>
+                                <td>${F.toFixed(3)}</td>
+                                <td>${formatSPSSDecimal(p)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Within Groups</strong></td>
+                                <td>${ssw.toFixed(3)}</td>
+                                <td>${dfw}</td>
+                                <td>${msw.toFixed(3)}</td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            <tr class="total-row">
+                                <td><strong>Total</strong></td>
+                                <td>${sst.toFixed(3)}</td>
+                                <td>${N-1}</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>`;
+                
+                printOutput(t('dlgTitleAnova'), html);
+            });
+        }
+
+        // --- STREAMING_CHUNK: Testing Survey Reliability & Validity ---
+        // 8. Uji Validitas Butir Pertanyaan
+        function openValidity() {
+            openDialog(t('dlgTitleValidity'), [
+                { id: 'vars', type: 'checkboxGroup', label: t('dlgVarValidity') }
+            ], (res) => {
+                if (res.vars.length < 2) return showMsg(t('errMinCorr'));
+
+                let itemData = []; 
+                let validRowIndexes = [];
+
+                for (let r = 0; r < numRows; r++) {
+                    let rowValid = true;
+                    let rowValues = [];
+                    for (let i = 0; i < res.vars.length; i++) {
+                        let val = parseFloat(data[r][res.vars[i]]);
+                        if (isNaN(val)) {
+                            rowValid = false;
+                            break;
+                        }
+                        rowValues.push(val);
+                    }
+                    if (rowValid) {
+                        itemData.push(rowValues);
+                        validRowIndexes.push(r);
+                    }
+                }
+
+                let N = itemData.length;
+                if (N < 3) return showMsg(t('errMinReg'));
+
+                let totalScores = itemData.map(row => row.reduce((sum, val) => sum + val, 0));
+
+                let df = N - 2;
+                let tCrit = jStat.studentt.inv(0.975, df);
+                let rTable = tCrit / Math.sqrt(df + tCrit * tCrit);
+
+                let html = `
+                <div class="spss-output-container">
+                    <div class="spss-output-title">${t('spssValidityTitle')}</div>
+                    <p class="text-xs text-slate-500 mb-2">df = N - 2 = ${df}, r-tabel (sig. 0.05) = <strong>${formatSPSSDecimal(rTable)}</strong>, N = ${N}</p>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th>Butir Pertanyaan (Items)</th>
+                                <th>Corrected Item-Total Correlation (r-hitung)</th>
+                                <th>r-tabel</th>
+                                <th>Status / Decision</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                res.vars.forEach((vIdx, localIdx) => {
+                    let itemScores = itemData.map(row => row[localIdx]);
+                    
+                    let rCalc = ss.sampleCorrelation(itemScores, totalScores);
+                    let isValid = rCalc > rTable;
+                    let statusLabel = isValid ? t('lblStatusValid') : t('lblStatusInvalid');
+                    let statusColor = isValid ? 'text-emerald-700 font-bold' : 'text-rose-600 font-bold';
+
+                    html += `<tr>
+                        <td><strong>${variables[vIdx].name}</strong></td>
+                        <td>${formatSPSSDecimal(rCalc)}</td>
+                        <td>${formatSPSSDecimal(rTable)}</td>
+                        <td class="${statusColor}">${statusLabel}</td>
+                    </tr>`;
+                });
+
+                html += `
+                        </tbody>
+                    </table>
+                    <div class="spss-output-note">* Butir pertanyaan dinyatakan VALID jika nilai r-hitung > r-tabel.</div>
+                </div>`;
+
+                printOutput(t('dlgTitleValidity'), html);
+            });
+        }
+
+        // 9. Uji Reliabilitas Cronbach's Alpha
+        function openReliability() {
+            openDialog(t('dlgTitleReliability'), [
+                { id: 'vars', type: 'checkboxGroup', label: t('dlgVarReliability') }
+            ], (res) => {
+                if (res.vars.length < 2) return showMsg(t('errMinCorr'));
+
+                let itemData = []; 
+                for (let r = 0; r < numRows; r++) {
+                    let rowValid = true;
+                    let rowValues = [];
+                    for (let i = 0; i < res.vars.length; i++) {
+                        let val = parseFloat(data[r][res.vars[i]]);
+                        if (isNaN(val)) {
+                            rowValid = false;
+                            break;
+                        }
+                        rowValues.push(val);
+                    }
+                    if (rowValid) itemData.push(rowValues);
+                }
+
+                let N = itemData.length;
+                let k = res.vars.length;
+                if (N < 3) return showMsg(t('errMinReg'));
+
+                let itemVariances = [];
+                for (let i = 0; i < k; i++) {
+                    let columnScores = itemData.map(row => row[i]);
+                    itemVariances.push(ss.sampleVariance(columnScores));
+                }
+                let sumItemVariances = itemVariances.reduce((sum, v) => sum + v, 0);
+
+                let totalScores = itemData.map(row => row.reduce((sum, val) => sum + val, 0));
+                let totalVariance = ss.sampleVariance(totalScores);
+
+                let alpha = (k / (k - 1)) * (1 - (sumItemVariances / totalVariance));
+                
+                let isReliable = alpha >= 0.60;
+                let statusLabel = isReliable ? t('lblStatusReliable') : t('lblStatusUnreliable');
+                let statusColor = isReliable ? 'text-emerald-700 font-bold' : 'text-rose-600 font-bold';
+
+                let html = `
+                <div class="spss-output-container">
+                    <div class="spss-output-title">${t('spssReliabilityTitle')}</div>
+                    
+                    <h4 class="font-semibold text-xs text-slate-700 mt-4 mb-2 uppercase">${t('lblReliabilityStats')}</h4>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th>${t('lblCronbachAlpha')}</th>
+                                <th>${t('lblNOfItems')} (k)</th>
+                                <th>N of Respondents</th>
+                                <th>Status / Decision</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="font-bold text-blue-700 text-sm">${formatSPSSDecimal(alpha)}</td>
+                                <td>${k}</td>
+                                <td>${N}</td>
+                                <td class="${statusColor}">${statusLabel}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="spss-output-note">* Instrumen kuesioner dinyatakan RELIABEL jika nilai Cronbach's Alpha >= 0.60.</div>
+                </div>`;
+
+                printOutput(t('dlgTitleReliability'), html);
+            });
+        }
+
+        // 10. Uji Normalitas Jarque-Bera
+        function openNormality() {
+            openDialog(t('dlgTitleNormality'), [
+                { id: 'vars', type: 'checkboxGroup', label: t('dlgVarNormality') }
+            ], (res) => {
+                let html = `
+                <div class="spss-output-container">
+                    <div class="spss-output-title">${t('spssNormalityTitle')}</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th>Variabel</th>
+                                <th>N</th>
+                                <th>Skewness</th>
+                                <th>Kurtosis (Excess)</th>
+                                <th>JB Statistic</th>
+                                <th>Asymp. Sig (p-value)</th>
+                                <th>${t('lblDecision')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                res.vars.forEach(vIdx => {
+                    let d = getNumericColumn(vIdx);
+                    if (d.length < 5) {
+                        html += `<tr><td><strong>${variables[vIdx].name}</strong></td><td colspan="6" class="text-center text-slate-400 italic">${t('errMinReg')}</td></tr>`;
+                        return;
+                    }
+                    let n = d.length;
+                    let mean = ss.mean(d);
+                    
+                    // Hitung momen standar
+                    let m2 = 0, m3 = 0, m4 = 0;
+                    d.forEach(val => {
+                        let diff = val - mean;
+                        m2 += diff * diff;
+                        m3 += diff * diff * diff;
+                        m4 += diff * diff * diff * diff;
+                    });
+                    m2 /= n;
+                    m3 /= n;
+                    m4 /= n;
+
+                    let skew = m3 / Math.pow(m2, 1.5);
+                    let kurt = m4 / (m2 * m2);
+                    let excessKurt = kurt - 3;
+
+                    // Rumus Jarque-Bera
+                    let jbStat = (n / 6) * (skew * skew + (excessKurt * excessKurt / 4));
+                    let pValue = 1 - jStat.chisquare.cdf(jbStat, 2);
+
+                    let isNormal = pValue > 0.05;
+                    let decision = isNormal ? t('lblNormNormal') : t('lblNormNotNormal');
+                    let textClass = isNormal ? 'text-emerald-700 font-semibold' : 'text-rose-600 font-semibold';
+
+                    html += `<tr>
+                        <td><strong>${variables[vIdx].name}</strong></td>
+                        <td>${n}</td>
+                        <td>${formatSPSSDecimal(skew)}</td>
+                        <td>${formatSPSSDecimal(excessKurt)}</td>
+                        <td>${jbStat.toFixed(4)}</td>
+                        <td>${formatSPSSDecimal(pValue, 5)}</td>
+                        <td class="${textClass}">${decision}</td>
+                    </tr>`;
+                });
+
+                html += `
+                        </tbody>
+                    </table>
+                    <div class="spss-output-note">* Hipotesis Nol (H0): Data berdistribusi normal. Data dinyatakan Normal jika p-value > 0.05.</div>
+                </div>`;
+
+                printOutput(t('dlgTitleNormality'), html);
+            });
+        }
+
+        // --- STREAMING_CHUNK: High-end Multiple Linear Regression Solver ---
+        // 11. Regresi Linear Berganda (UPGRADED - PERSIS SCREENSHOT 08.45.48 DAN 08.46.09!)
+        function openMultipleRegression() {
+            openDialog(t('dlgTitleMultipleRegression'), [
+                { id: 'dep', type: 'select', label: t('dlgVarDep') },
+                { id: 'indeps', type: 'checkboxGroup', label: t('dlgVarIndeps') },
+                { id: 'showAnova', type: 'boolean', label: t('lblOptAnovaReg'), default: true, group: 'options' }
+            ], (res) => {
+                if (res.indeps.includes(res.dep)) {
+                    return showMsg(t('errTwoVars'));
+                }
+
+                let validData = [];
+                for (let r = 0; r < numRows; r++) {
+                    let rowValid = true;
+                    let yVal = parseFloat(data[r][res.dep]);
+                    if (isNaN(yVal)) rowValid = false;
+
+                    let rowX = [];
+                    for (let i = 0; i < res.indeps.length; i++) {
+                        let xVal = parseFloat(data[r][res.indeps[i]]);
+                        if (isNaN(xVal)) {
+                            rowValid = false;
+                            break;
+                        }
+                        rowX.push(xVal);
+                    }
+
+                    if (rowValid) {
+                        validData.push({ y: yVal, x: rowX });
+                    }
+                }
+
+                let N = validData.length;
+                let M = res.indeps.length; 
+
+                if (N <= M + 1) {
+                    return showMsg(t('errMinReg'));
+                }
+
+                let X = validData.map(row => [1, ...row.x]);
+                let Y = validData.map(row => [row.y]);
+
+                let XT = matrixTranspose(X);
+                let XTX = matrixMultiply(XT, X);
+                let XTX_inv = matrixInvert(XTX);
+
+                if (!XTX_inv) {
+                    return showMsg(currentLang === 'id' ? "Matriks singular terdeteksi. Terjadi multikolinearitas sempurna antar variabel independen." : "Singular matrix detected. Perfect multicollinearity exists among independent variables.");
+                }
+
+                let XTY = matrixMultiply(XT, Y);
+                let B = matrixMultiply(XTX_inv, XTY); 
+
+                let fittedY = matrixMultiply(X, B);
+                let residuals = validData.map((row, i) => row.y - fittedY[i][0]);
+
+                let meanY = ss.mean(validData.map(row => row.y));
+                let ssTot = ss.sum(validData.map(row => Math.pow(row.y - meanY, 2)));
+                let ssRes = ss.sum(residuals.map(r => r * r));
+                let ssReg = ssTot - ssRes;
+
+                let dfReg = M;
+                let dfRes = N - M - 1;
+                let msReg = ssReg / dfReg;
+                let msRes = ssRes / dfRes;
+                let F = msReg / msRes;
+                let pModel = 1 - jStat.centralF.cdf(F, dfReg, dfRes);
+
+                let rSquared = ssReg / ssTot;
+                let adjRSquared = 1 - ((1 - rSquared) * (N - 1) / dfRes);
+                let stdErrorEst = Math.sqrt(msRes);
+
+                // Hitung Standardized Beta Coefficients
+                let stdDevY = ss.sampleStandardDeviation(validData.map(row => row.y));
+                let betas = {};
+                res.indeps.forEach((vIdx, i) => {
+                    let xVals = validData.map(row => row.x[i]);
+                    let stdDevX = ss.sampleStandardDeviation(xVals);
+                    let bValue = B[i + 1][0];
+                    betas[vIdx] = stdDevY > 0 ? (bValue * (stdDevX / stdDevY)) : 0;
+                });
+
+                // Hitung Collinearity Statistics (Tolerance & VIF)
+                let collinearityStats = {};
+                if (M >= 2) {
+                    for (let j = 0; j < M; j++) {
+                        let targetIdx = res.indeps[j];
+                        let auxY = validData.map(row => [row.x[j]]); // Variabel independen ke-j sebagai target
+                        
+                        // Independen lain selain ke-j sebagai predictor
+                        let auxX = validData.map(row => {
+                            let otherVars = [];
+                            for (let k = 0; k < M; k++) {
+                                if (k !== j) otherVars.push(row.x[k]);
+                            }
+                            return [1, ...otherVars];
+                        });
+
+                        let auxXT = matrixTranspose(auxX);
+                        let auxXTX = matrixMultiply(auxXT, auxX);
+                        let auxXTX_inv = matrixInvert(auxXTX);
+                        
+                        if (auxXTX_inv) {
+                            let auxXTY = matrixMultiply(auxXT, auxY);
+                            let auxB = matrixMultiply(auxXTX_inv, auxXTY);
+                            let auxFitted = matrixMultiply(auxX, auxB);
+                            
+                            let auxMeanY = ss.mean(auxY.map(r => r[0]));
+                            let auxSSTot = ss.sum(auxY.map(r => Math.pow(r[0] - auxMeanY, 2)));
+                            let auxSSRes = ss.sum(auxY.map((r, idx) => Math.pow(r[0] - auxFitted[idx][0], 2)));
+                            
+                            let auxR2 = 1 - (auxSSRes / auxSSTot);
+                            let tolerance = 1 - auxR2;
+                            let vif = tolerance > 0 ? (1 / tolerance) : Infinity;
+                            collinearityStats[targetIdx] = { tolerance, vif };
+                        } else {
+                            collinearityStats[targetIdx] = { tolerance: 0, vif: Infinity };
+                        }
+                    }
+                } else {
+                    res.indeps.forEach(idx => {
+                        collinearityStats[idx] = { tolerance: 1.0, vif: 1.0 };
+                    });
+                }
+
+                // --- GABUNGAN UJI F DAN UJI T DENGAN MODEL TABEL SPSS ASLI ---
+
+                // Layout Output HTML
+                let html = `
+                <!-- TABEL MODEL SUMMARY -->
+                <div class="spss-output-container">
+                    <div class="spss-output-title">${t('spssMultRegTitle')} - ${t('spssModelSummary')}</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>R</th>
+                                <th>R Square</th>
+                                <th>Adjusted R Square</th>
+                                <th>Std. Error of the Estimate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1</strong></td>
+                                <td>${formatSPSSDecimal(Math.sqrt(rSquared))}</td>
+                                <td>${formatSPSSDecimal(rSquared)}</td>
+                                <td>${formatSPSSDecimal(adjRSquared)}</td>
+                                <td>${formatSPSSDecimal(stdErrorEst, 4)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="spss-output-note">a. Predictors: (Constant), ${res.indeps.map(idx => variables[idx].name).join(', ')}</div>
+                </div>
+
+                <!-- TABEL UJI F (ANOVA) - PERSIS SCREENSHOT 08.46.09 -->
+                <div class="spss-output-container mt-6">
+                    <div class="spss-output-title">E. Uji F</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Sum of Squares</th>
+                                <th>df</th>
+                                <th>Mean Square</th>
+                                <th>F</th>
+                                <th>Sig.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1 &nbsp;&nbsp; Regression</strong></td>
+                                <td>${ssReg.toFixed(3)}</td>
+                                <td>${dfReg}</td>
+                                <td>${msReg.toFixed(3)}</td>
+                                <td>${F.toFixed(3)}</td>
+                                <td>${formatSPSSDecimal(pModel)}<sup>a</sup></td>
+                            </tr>
+                            <tr>
+                                <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>Residual</strong></td>
+                                <td>${ssRes.toFixed(3)}</td>
+                                <td>${dfRes}</td>
+                                <td>${msRes.toFixed(3)}</td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            <tr class="total-row">
+                                <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>Total</strong></td>
+                                <td>${ssTot.toFixed(3)}</td>
+                                <td>${N-1}</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="spss-output-note">a. Predictors: (Constant), ${res.indeps.map(idx => variables[idx].name).join(', ')}</div>
+                    <div class="spss-output-note">b. Dependent Variable: ${variables[res.dep].name}</div>
+                </div>
+
+                <!-- TABEL UJI T (COEFFICIENTS & COLLINEARITY) - PERSIS SCREENSHOT 08.45.48 -->
+                <div class="spss-output-container mt-6">
+                    <div class="spss-output-title">D. Uji T (Coefficients<sup>a</sup>)</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2">Model</th>
+                                <th colspan="2" style="text-align: center; border-bottom: 1px solid #000; padding-bottom: 2px;">Unstandardized Coefficients</th>
+                                <th rowspan="2" style="text-align: center; vertical-align: middle; padding: 0 8px;">Standardized Coefficients<br>Beta</th>
+                                <th rowspan="2" style="text-align: center; vertical-align: middle; padding: 0 8px;">t</th>
+                                <th rowspan="2" style="text-align: center; vertical-align: middle; padding: 0 8px;">Sig.</th>
+                                <th colspan="2" style="text-align: center; border-bottom: 1px solid #000; padding-bottom: 2px;">Collinearity Statistics</th>
+                            </tr>
+                            <tr>
+                                <th>B</th>
+                                <th>Std. Error</th>
+                                <th>Tolerance</th>
+                                <th>VIF</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                // Baris Constant
+                let seConstant = stdErrorEst * Math.sqrt(XTX_inv[0][0]);
+                let tConstant = B[0][0] / seConstant;
+                let pConstant = jStat.studentt.cdf(-Math.abs(tConstant), dfRes) * 2;
+                
+                html += `<tr>
+                    <td><strong>1 &nbsp;&nbsp; (Constant)</strong></td>
+                    <td>${formatSPSSDecimal(B[0][0])}</td>
+                    <td>${formatSPSSDecimal(seConstant)}</td>
+                    <td style="color: #888; text-align: center;"></td>
+                    <td>${formatSPSSDecimal(tConstant)}</td>
+                    <td>${formatSPSSDecimal(pConstant)}</td>
+                    <td style="color: #888; text-align: center;"></td>
+                    <td style="color: #888; text-align: center;"></td>
+                </tr>`;
+
+                // Baris Variabel Independen
+                res.indeps.forEach((vIdx, i) => {
+                    let coefIdx = i + 1;
+                    let seCoef = stdErrorEst * Math.sqrt(XTX_inv[coefIdx][coefIdx]);
+                    let tCoef = B[coefIdx][0] / seCoef;
+                    let pCoef = jStat.studentt.cdf(-Math.abs(tCoef), dfRes) * 2;
+
+                    let toleranceVal = collinearityStats[vIdx]?.tolerance;
+                    let vifVal = collinearityStats[vIdx]?.vif;
+
+                    html += `<tr>
+                        <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>${variables[vIdx].name}</strong></td>
+                        <td>${formatSPSSDecimal(B[coefIdx][0])}</td>
+                        <td>${formatSPSSDecimal(seCoef)}</td>
+                        <td>${formatSPSSDecimal(betas[vIdx])}</td>
+                        <td>${formatSPSSDecimal(tCoef)}</td>
+                        <td>${formatSPSSDecimal(pCoef)}</td>
+                        <td>${M >= 2 ? formatSPSSDecimal(toleranceVal) : '1.000'}</td>
+                        <td>${M >= 2 ? formatSPSSDecimal(vifVal) : '1.000'}</td>
+                    </tr>`;
+                });
+
+                html += `
+                        </tbody>
+                    </table>
+                    <div class="spss-output-note">a. Dependent Variable: ${variables[res.dep].name}</div>
+                </div>`;
+
+                printOutput(t('btnAnMultReg'), html);
+            });
+        }
+
+        // 12. Tabulasi Silang & Uji Chi-Square
+        function openChiSquare() {
+            openDialog(t('dlgTitleChiSquare'), [
+                { id: 'rowVar', type: 'select', label: t('dlgVarChiRow') },
+                { id: 'colVar', type: 'select', label: t('dlgVarChiCol') }
+            ], (res) => {
+                if (res.rowVar === res.colVar) {
+                    return showMsg(t('errTwoVars'));
+                }
+
+                let rowLabels = variables[res.rowVar].valueLabels || {};
+                let colLabels = variables[res.colVar].valueLabels || {};
+
+                let rawRow = getRawColumn(res.rowVar);
+                let rawCol = getRawColumn(res.colVar);
+
+                let pairedData = [];
+                let maxLen = Math.min(rawRow.length, rawCol.length, numRows);
+                for (let r = 0; r < maxLen; r++) {
+                    let rVal = data[r][res.rowVar]?.toString().trim();
+                    let cVal = data[r][res.colVar]?.toString().trim();
+                    if (rVal !== undefined && rVal !== '' && cVal !== undefined && cVal !== '') {
+                        pairedData.push({ row: rVal, col: cVal });
+                    }
+                }
+
+                let N = pairedData.length;
+                if (N === 0) return showMsg(t('errNoData'));
+
+                let uniqueRows = [...new Set(pairedData.map(item => item.row))].sort();
+                let uniqueCols = [...new Set(pairedData.map(item => item.col))].sort();
+
+                let observed = {};
+                uniqueRows.forEach(r => {
+                    observed[r] = {};
+                    uniqueCols.forEach(c => {
+                        observed[r][c] = 0;
+                    });
+                });
+
+                pairedData.forEach(item => {
+                    observed[item.row][item.col]++;
+                });
+
+                let rowTotals = {};
+                uniqueRows.forEach(r => {
+                    rowTotals[r] = uniqueCols.reduce((sum, c) => sum + observed[r][c], 0);
+                });
+
+                let colTotals = {};
+                uniqueCols.forEach(c => {
+                    colTotals[c] = uniqueRows.reduce((sum, r) => sum + observed[r][c], 0);
+                });
+
+                let html = `
+                <div class="spss-output-container">
+                    <div class="spss-output-title">${variables[res.rowVar].name} * ${variables[res.colVar].name} Crosstabulation</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2"></th>
+                                <th colspan="${uniqueCols.length + 1}" style="text-align: center; border-bottom: 0.5px solid #000;">${variables[res.colVar].name}</th>
+                            </tr>
+                            <tr>
+                                ${uniqueCols.map(c => `<th>${colLabels[c] !== undefined ? colLabels[c] : c}</th>`).join('')}
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                uniqueRows.forEach(r => {
+                    let displayRowLabel = rowLabels[r] !== undefined ? rowLabels[r] : r;
+                    
+                    html += `<tr>
+                        <td><strong>${displayRowLabel}</strong> (Observed)</td>
+                        ${uniqueCols.map(c => `<td>${observed[r][c]}</td>`).join('')}
+                        <td class="font-bold">${rowTotals[r]}</td>
+                    </tr>`;
+
+                    html += `<tr class="text-slate-500 italic">
+                        <td>&nbsp;&nbsp;&nbsp;&nbsp;Expected Count</td>
+                        ${uniqueCols.map(c => {
+                            let expected = (rowTotals[r] * colTotals[c]) / N;
+                            return `<td>${expected.toFixed(1)}</td>`;
+                        }).join('')}
+                        <td>${rowTotals[r].toFixed(1)}</td>
+                    </tr>`;
+                });
+
+                html += `
+                            <tr class="total-row">
+                                <td><strong>Total (Observed)</strong></td>
+                                ${uniqueCols.map(c => `<td class="font-bold">${colTotals[c]}</td>`).join('')}
+                                <td class="font-bold">${N}</td>
+                            </tr>
+                            <tr class="total-row text-slate-500 italic">
+                                <td><strong>Total (Expected)</strong></td>
+                                ${uniqueCols.map(c => `<td>${colTotals[c].toFixed(1)}</td>`).join('')}
+                                <td>${N.toFixed(1)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>`;
+
+                let chiSquare = 0;
+                uniqueRows.forEach(r => {
+                    uniqueCols.forEach(c => {
+                        let obs = observed[r][c];
+                        let exp = (rowTotals[r] * colTotals[c]) / N;
+                        if (exp > 0) {
+                            chiSquare += Math.pow(obs - exp, 2) / exp;
+                        }
+                    });
+                });
+
+                let df = (uniqueRows.length - 1) * (uniqueCols.length - 1);
+                let pValue = df > 0 ? (1 - jStat.chisquare.cdf(chiSquare, df)) : 1;
+
+                html += `
+                <div class="spss-output-container mt-6">
+                    <div class="spss-output-title">Chi-Square Tests</div>
+                    <table class="spss-output-table">
+                        <thead>
+                            <tr>
+                                <th>Test Parameter</th>
+                                <th>Value</th>
+                                <th>df</th>
+                                <th>Asymptotic Significance (2-sided)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Pearson Chi-Square</strong></td>
+                                <td>${chiSquare.toFixed(3)}</td>
+                                <td>${df}</td>
+                                <td>${formatSPSSDecimal(pValue, 5)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>N of Valid Cases</strong></td>
+                                <td>${N}</td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>`;
+
+                printOutput(t('spssChiTitle'), html);
+            });
+        }
+
+        // 13. Uji Kolmogorov-Smirnov Satu Sampel (MODEL PERSIS SPSS!)
+        function openOneSampleKS() {
+            openDialog(t('dlgTitleKS'), [
+                { id: 'vars', type: 'checkboxGroup', label: t('dlgVarKS') }
+            ], (res) => {
+                res.vars.forEach(vIdx => {
+                    let d = getNumericColumn(vIdx);
+                    let vName = variables[vIdx].name;
+
+                    if (d.length < 3) {
+                        showMsg(t('errNoData'));
+                        return;
+                    }
+
+                    // Urutkan data secara naik (Ascending)
+                    d.sort((a, b) => a - b);
+                    let n = d.length;
+
+                    // Hitung Mean dan Standar Deviasi Sampel
+                    let mean = ss.mean(d);
+                    let std = ss.sampleStandardDeviation(d);
+
+                    let maxDiffAbs = 0;
+                    let maxDiffPos = 0;
+                    let maxDiffNeg = 0;
+
+                    for (let i = 0; i < n; i++) {
+                        let x = d[i];
+                        let empiricalCumulative = (i + 1) / n;
+                        let empiricalPrevious = i / n;
+                        
+                        // Hitung nilai normal teoretis CDF menggunakan jStat
+                        let theoreticalCumulative = jStat.normal.cdf(x, mean, std);
+
+                        let diffPos = empiricalCumulative - theoreticalCumulative;
+                        let diffNeg = theoreticalCumulative - empiricalPrevious;
+
+                        if (diffPos > maxDiffPos) maxDiffPos = diffPos;
+                        if (diffNeg > maxDiffNeg) maxDiffNeg = diffNeg;
+
+                        let absDiff = Math.max(Math.abs(diffPos), Math.abs(diffNeg));
+                        if (absDiff > maxDiffAbs) maxDiffAbs = absDiff;
+                    }
+
+                    // Menghitung p-value Asimtotik Kolmogorov-Smirnov
+                    let z = maxDiffAbs * (Math.sqrt(n) + 0.12 + 0.11 / Math.sqrt(n));
+                    let pValue = 1.0;
+                    if (z >= 0.2) {
+                        let sum = 0;
+                        for (let k = 1; k <= 100; k++) {
+                            sum += Math.pow(-1, k - 1) * Math.exp(-2 * k * k * z * z);
+                        }
+                        pValue = Math.max(0, Math.min(1, 2 * sum));
+                    }
+
+                    let html = `
+                    <div class="spss-output-container">
+                        <div class="spss-output-title">${t('spssKSTitle')}</div>
+                        <table class="spss-output-table">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>${vName}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>N</td>
+                                    <td>${n}</td>
+                                </tr>
+                                <tr>
+                                    <td>Normal Parameters<sup>a,b</sup> &nbsp;&nbsp;&nbsp;&nbsp;Mean</td>
+                                    <td>${mean.toFixed(4)}</td>
+                                </tr>
+                                <tr>
+                                    <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Std. Deviation</td>
+                                    <td>${std.toFixed(4)}</td>
+                                </tr>
+                                <tr>
+                                    <td>Most Extreme Differences &nbsp;&nbsp;&nbsp;&nbsp;Absolute</td>
+                                    <td>${formatSPSSDecimal(maxDiffAbs)}</td>
+                                </tr>
+                                <tr>
+                                    <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Positive</td>
+                                    <td>${formatSPSSDecimal(maxDiffPos)}</td>
+                                </tr>
+                                <tr>
+                                    <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Negative</td>
+                                    <td>-${formatSPSSDecimal(maxDiffNeg)}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Test Statistic</strong></td>
+                                    <td><strong>${formatSPSSDecimal(maxDiffAbs)}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Asymp. Sig. (2-tailed)</td>
+                                    <td>${formatSPSSDecimal(pValue)}<sup>c</sup></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="spss-output-note">a. Test distribution is Normal.</div>
+                        <div class="spss-output-note">b. Calculated from data.</div>
+                        <div class="spss-output-note">c. Lilliefors Significance Correction.</div>
+                    </div>`;
+
+                    printOutput(`${t('spssKSTitle')} - ${vName}`, html);
+                });
+            });
+        }
+
+        // 14. Scatter Plot
+        function openScatterPlot() {
+            openDialog(t('dlgTitleScatter'), [
+                { id: 'varY', type: 'select', label: t('dlgVarScatterY') },
+                { id: 'varX', type: 'select', label: t('dlgVarScatterX') }
+            ], (res) => {
+                let paired = getPairedNumeric(res.varX, res.varY);
+                if(paired.x.length < 2) return showMsg(t('errMinPaired'));
+
+                let chartData = paired.x.map((val, i) => ({x: val, y: paired.y[i]}));
+
+                const chartConfig = {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Data', data: chartData,
+                            backgroundColor: 'rgba(37, 99, 235, 0.6)', borderColor: 'rgba(37, 99, 235, 1)',
+                            borderWidth: 1, pointRadius: 5, pointHoverRadius: 7
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: variables[res.varX].name } }, y: { title: { display: true, text: variables[res.varY].name } } }, plugins: { legend: { display: false } } }
+                };
+
+                printOutput(`${t('dlgTitleScatter')}: ${variables[res.varY].name} vs ${variables[res.varX].name}`, `<div class="spss-output-note">${t('spssScatterNote')}: N = ${chartData.length}</div>`, chartConfig);
+            });
+        }
+
+        // --- STREAMING_CHUNK: Initializing SmartPLS SEM-PLS Engine and UI ---
+        // --- SMARTPLS (SEM-PLS) ENGINE STATE & ALGORITHMS ---
+        let plsConstructs = []; // List of { name: "LatentA", indicators: [vIdx1, vIdx2...] }
+        let plsPaths = [];       // List of { from: "LatentA", to: "LatentB" }
+
+        function openPLSModelingDialog() {
+            // Populate indicators selector in the dialog
+            const indContainer = document.getElementById('plsIndicatorList');
+            indContainer.innerHTML = '';
+            
+            variables.forEach((v, idx) => {
+                const label = document.createElement('label');
+                label.className = 'flex items-center gap-2 p-1 hover:bg-white cursor-pointer rounded';
+                label.innerHTML = `
+                    <input type="checkbox" name="plsIndicatorsCheck" value="${idx}" class="rounded text-amber-500 focus:ring-amber-500">
+                    <span>${v.name}</span>
+                `;
+                indContainer.appendChild(label);
+            });
+
+            updatePLSSelectors();
+            renderPLSStructuralDiagram();
+
+            document.getElementById('plsModelingModal').classList.remove('hidden');
+        }
+
+        function closePLSModelingDialog() {
+            document.getElementById('plsModelingModal').classList.add('hidden');
+        }
+
+        function updatePLSSelectors() {
+            const fromSelect = document.getElementById('plsPathFrom');
+            const toSelect = document.getElementById('plsPathTo');
+            
+            fromSelect.innerHTML = '';
+            toSelect.innerHTML = '';
+
+            plsConstructs.forEach(c => {
+                const opt1 = document.createElement('option');
+                opt1.value = c.name;
+                opt1.innerText = c.name;
+                fromSelect.appendChild(opt1);
+
+                const opt2 = document.createElement('option');
+                opt2.value = c.name;
+                opt2.innerText = c.name;
+                toSelect.appendChild(opt2);
+            });
+            
+            // Re-summarize structures
+            const summary = document.getElementById('plsConstructListSummary');
+            summary.innerHTML = '';
+            
+            if (plsConstructs.length === 0) {
+                summary.innerHTML = '<span class="text-slate-400 italic">Belum ada variabel Laten didefinisikan.</span>';
+                return;
+            }
+
+            // List constructs
+            plsConstructs.forEach((c, idx) => {
+                const indNames = c.indicators.map(i => variables[i].name).join(', ');
+                const item = document.createElement('div');
+                item.className = 'p-1.5 bg-slate-50 border rounded text-[11px] flex justify-between items-center';
+                item.innerHTML = `
+                    <div>
+                        <span class="font-bold text-amber-700">${c.name}</span> 
+                        <span class="text-[10px] text-slate-500">(${indNames})</span>
+                    </div>
+                    <button onclick="removePLSConstruct(${idx})" class="text-rose-500 hover:text-rose-700 font-bold"><i class="fa-solid fa-trash-can"></i></button>
+                `;
+                summary.appendChild(item);
+            });
+
+            // List paths
+            plsPaths.forEach((p, idx) => {
+                const item = document.createElement('div');
+                item.className = 'p-1.5 bg-amber-50 border border-amber-100 rounded text-[11px] flex justify-between items-center';
+                item.innerHTML = `
+                    <div>
+                        <span class="font-semibold text-slate-700">${p.from}</span> 
+                        <i class="fa-solid fa-arrow-right text-amber-500 mx-1"></i>
+                        <span class="font-semibold text-slate-700">${p.to}</span>
+                    </div>
+                    <button onclick="removePLSPath(${idx})" class="text-rose-500 hover:text-rose-700 font-bold"><i class="fa-solid fa-trash-can"></i></button>
+                `;
+                summary.appendChild(item);
+            });
+        }
+
+        // --- STREAMING_CHUNK: Managing Construct Definition in SEM-PLS ---
+        function addPLSConstruct() {
+            const name = document.getElementById('plsConstructName').value.trim().replace(/\s+/g, '_');
+            const checked = document.querySelectorAll('input[name="plsIndicatorsCheck"]:checked');
+            const indicators = Array.from(checked).map(cb => parseInt(cb.value));
+
+            if (!name) {
+                return showMsg("Nama variabel laten tidak boleh kosong!");
+            }
+            if (indicators.length === 0) {
+                return showMsg("Harap pilih minimal satu indikator (manifest) untuk variabel laten ini!");
+            }
+            if (plsConstructs.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+                return showMsg("Variabel laten dengan nama tersebut sudah didefinisikan!");
+            }
+
+            plsConstructs.push({ name, indicators });
+            document.getElementById('plsConstructName').value = '';
+            checked.forEach(cb => cb.checked = false);
+
+            updatePLSSelectors();
+            renderPLSStructuralDiagram();
+        }
+
+        function removePLSConstruct(idx) {
+            const cName = plsConstructs[idx].name;
+            plsConstructs.splice(idx, 1);
+            // Bersihkan jalur yang terkait dengan variabel laten ini
+            plsPaths = plsPaths.filter(p => p.from !== cName && p.to !== cName);
+            
+            updatePLSSelectors();
+            renderPLSStructuralDiagram();
+        }
+
+        function addPLSPath() {
+            const from = document.getElementById('plsPathFrom').value;
+            const to = document.getElementById('plsPathTo').value;
+
+            if (!from || !to) {
+                return showMsg("Definisikan minimal 2 variabel laten terlebih dahulu!");
+            }
+            if (from === to) {
+                return showMsg("Jalur/Hubungan struktural tidak boleh menuju ke diri sendiri!");
+            }
+            if (plsPaths.some(p => p.from === from && p.to === to)) {
+                return showMsg("Hubungan structural ini sudah didefinisikan sebelumnya!");
+            }
+
+            plsPaths.push({ from, to });
+            updatePLSSelectors();
+            renderPLSStructuralDiagram();
+        }
+
+        function removePLSPath(idx) {
+            plsPaths.splice(idx, 1);
+            updatePLSSelectors();
+            renderPLSStructuralDiagram();
+        }
+
+        function clearPLSModel() {
+            plsConstructs = [];
+            plsPaths = [];
+            updatePLSSelectors();
+            renderPLSStructuralDiagram();
+        }
+
+        // --- STREAMING_CHUNK: Auto-Populating SEM-PLS Demo Context ---
+        function loadPLSDemoData() {
+            // Load Questionnaire sample first if grid is empty
+            const totalRecords = getNumericColumn(0).length;
+            if (totalRecords < 10) {
+                loadSampleDataset('questionnaire');
+            }
+
+            // Define latent constructs and measurement model
+            plsConstructs = [
+                { name: "Kegunaan", indicators: [0] },
+                { name: "Kualitas_Info", indicators: [1] },
+                { name: "Kualitas_Layanan", indicators: [2] },
+                { name: "Kepuasan_Pengguna", indicators: [3] }
+            ];
+
+            // Define structural structural paths
+            plsPaths = [
+                { from: "Kegunaan", to: "Kepuasan_Pengguna" },
+                { from: "Kualitas_Info", to: "Kepuasan_Pengguna" },
+                { from: "Kualitas_Layanan", to: "Kepuasan_Pengguna" }
+            ];
+
+            updatePLSSelectors();
+            renderPLSStructuralDiagram();
+            showMsg("Template Model PLS berhasil dimuat dengan data kuesioner kepuasan!", true);
+        }
+
+        // --- STREAMING_CHUNK: Interactive Path Modeling Visualizer (SVG) ---
+        // Render SVG SmartPLS diagram on the workspace
+        function renderPLSStructuralDiagram() {
+            const svg = document.getElementById('plsStructuralSvg');
+            svg.innerHTML = ''; // Clean canvas
+
+            if (plsConstructs.length === 0) {
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', '50%');
+                text.setAttribute('y', '50%');
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('fill', '#94a3b8');
+                text.setAttribute('class', 'text-xs italic font-medium');
+                text.textContent = 'Silakan definisikan variabel laten & hubungan untuk memulai.';
+                svg.appendChild(text);
+                return;
+            }
+
+            // Simple Circle Graph Layout Solver
+            const width = svg.clientWidth || 600;
+            const height = svg.clientHeight || 400;
+            const nodes = {};
+
+            // Calculate circle placement dynamically
+            plsConstructs.forEach((c, idx) => {
+                const angle = (idx / plsConstructs.length) * 2 * Math.PI - Math.PI / 2;
+                const r = Math.min(width, height) * 0.3; // radius of layout circle
+                nodes[c.name] = {
+                    x: width / 2 + r * Math.cos(angle),
+                    y: height / 2 + r * Math.sin(angle),
+                    name: c.name,
+                    indicators: c.indicators
+                };
+            });
+
+            // SVG Arrow Marker Definition
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            defs.innerHTML = `
+                <marker id="arrow" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
+                </marker>
+                <marker id="outerArrow" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#94a3b8" />
+                </marker>
+            `;
+            svg.appendChild(defs);
+
+            // Draw paths (structural relationships)
+            plsPaths.forEach(p => {
+                const fromNode = nodes[p.from];
+                const toNode = nodes[p.to];
+                if (fromNode && toNode) {
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', fromNode.x);
+                    line.setAttribute('y1', fromNode.y);
+                    line.setAttribute('x2', toNode.x);
+                    line.setAttribute('y2', toNode.y);
+                    line.setAttribute('stroke', '#f59e0b');
+                    line.setAttribute('stroke-width', '2.5');
+                    line.setAttribute('marker-end', 'url(#arrow)');
+                    svg.appendChild(line);
+                }
+            });
+
+            // Draw LVs constructs (nodes) & Indicators
+            plsConstructs.forEach(c => {
+                const node = nodes[c.name];
+                
+                // Draw indicators around constructs
+                c.indicators.forEach((indIdx, indLocalIdx) => {
+                    const angleOffset = (indLocalIdx / c.indicators.length) * 2 * Math.PI;
+                    const indX = node.x + 85 * Math.cos(angleOffset);
+                    const indY = node.y + 85 * Math.sin(angleOffset);
+
+                    // Connection lines
+                    const link = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    link.setAttribute('x1', node.x);
+                    link.setAttribute('y1', node.y);
+                    link.setAttribute('x2', indX);
+                    link.setAttribute('y2', indY);
+                    link.setAttribute('stroke', '#cbd5e1');
+                    link.setAttribute('stroke-width', '1');
+                    link.setAttribute('marker-end', 'url(#outerArrow)');
+                    svg.appendChild(link);
+
+                    // Indicator box
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', indX - 25);
+                    rect.setAttribute('y', indY - 12);
+                    rect.setAttribute('width', '50');
+                    rect.setAttribute('height', '24');
+                    rect.setAttribute('rx', '3');
+                    rect.setAttribute('fill', '#f8fafc');
+                    rect.setAttribute('stroke', '#94a3b8');
+                    rect.setAttribute('stroke-width', '1');
+                    svg.appendChild(rect);
+
+                    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    label.setAttribute('x', indX);
+                    label.setAttribute('y', indY + 4);
+                    label.setAttribute('text-anchor', 'middle');
+                    label.setAttribute('fill', '#475569');
+                    label.setAttribute('font-size', '9');
+                    label.setAttribute('font-weight', 'bold');
+                    label.textContent = variables[indIdx].name;
+                    svg.appendChild(label);
+                });
+
+                // Latent variable circle
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', node.x);
+                circle.setAttribute('cy', node.y);
+                circle.setAttribute('r', '32');
+                circle.setAttribute('fill', '#fffbeb');
+                circle.setAttribute('stroke', '#d97706');
+                circle.setAttribute('stroke-width', '2');
+                svg.appendChild(circle);
+
+                // Construct text
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', node.x);
+                text.setAttribute('y', node.y + 4);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('fill', '#1e293b');
+                text.setAttribute('font-size', '10');
+                text.setAttribute('font-weight', 'bold');
+                text.textContent = c.name.length > 9 ? c.name.substring(0,7)+'..' : c.name;
+                svg.appendChild(text);
+            });
+        }
+
+        // --- STREAMING_CHUNK: Partial Least Squares Structural Equation Modeling PLS-SEM Algorithm Core ---
+        function executePLS_SEM() {
+            if (plsConstructs.length < 2) {
+                return showMsg("Harap definisikan minimal 2 variabel laten!");
+            }
+            if (plsPaths.length === 0) {
+                return showMsg("Harap buat minimal satu alur/hubungan struktural antar variabel laten!");
+            }
+
+            // Step 1: Extract and Standardize Data Matrix
+            let validRows = [];
+            for (let r = 0; r < numRows; r++) {
+                let rowValid = true;
+                plsConstructs.forEach(c => {
+                    c.indicators.forEach(idx => {
+                        let val = parseFloat(data[r][idx]);
+                        if (isNaN(val)) rowValid = false;
+                    });
+                });
+                if (rowValid) {
+                    let record = {};
+                    plsConstructs.forEach(c => {
+                        c.indicators.forEach(idx => {
+                            record[idx] = parseFloat(data[r][idx]);
+                        });
+                    });
+                    validRows.push(record);
+                }
+            }
+
+            let N = validRows.length;
+            if (N < 10) {
+                return showMsg("Dibutuhkan minimal 10 baris data valid tanpa missing value untuk menjalankan PLS-SEM!");
+            }
+
+            // Standardize MVs
+            let stdData = {};
+            plsConstructs.forEach(c => {
+                c.indicators.forEach(idx => {
+                    let colVals = validRows.map(row => row[idx]);
+                    let mean = ss.mean(colVals);
+                    let std = ss.sampleStandardDeviation(colVals);
+                    stdData[idx] = colVals.map(v => std > 0 ? (v - mean) / std : 0);
+                });
+            });
+
+            // Step 2: Iterative Wold's PLS Algorithm
+            let maxIterations = 100;
+            let tolerance = 1e-6;
+            let lvScores = {}; // Key: LV name -> Array of scores (size N)
+            let outerWeights = {}; // Key: LV name -> Object of { indIdx: weight }
+
+            // Step 2.1: Initialize outer weights and latent scores
+            plsConstructs.forEach(c => {
+                let k = c.indicators.length;
+                let weights = {};
+                c.indicators.forEach(idx => {
+                    weights[idx] = 1.0 / Math.sqrt(k); // equal weights initial state
+                });
+                outerWeights[c.name] = weights;
+
+                // Calculate first LV score approximation
+                let scores = Array(N).fill(0);
+                for (let i = 0; i < N; i++) {
+                    c.indicators.forEach(idx => {
+                        scores[i] += stdData[idx][i] * weights[idx];
+                    });
+                }
+                
+                // Standardize
+                let mean = ss.mean(scores);
+                let std = ss.sampleStandardDeviation(scores);
+                lvScores[c.name] = scores.map(s => std > 0 ? (s - mean) / std : 0);
+            });
+
+            let iter = 0;
+            let converged = false;
+
+            while (iter < maxIterations && !converged) {
+                let prevWeights = JSON.parse(JSON.stringify(outerWeights));
+                let innerScores = {};
+
+                // Step 2.2: Inner Approximation (using Centroid scheme / Sign of correlation)
+                plsConstructs.forEach(c1 => {
+                    let innerApproximation = Array(N).fill(0);
+                    let sumAdjScores = 0;
+
+                    plsConstructs.forEach(c2 => {
+                        if (c1.name !== c2.name) {
+                            let isPathConnected = plsPaths.some(p => (p.from === c1.name && p.to === c2.name) || (p.from === c2.name && p.to === c1.name));
+                            if (isPathConnected) {
+                                let r = ss.sampleCorrelation(lvScores[c1.name], lvScores[c2.name]);
+                                let wInner = Math.sign(r); // Centroid scheme
+                                if (wInner === 0) wInner = 1;
+                                for (let i = 0; i < N; i++) {
+                                    innerApproximation[i] += wInner * lvScores[c2.name][i];
+                                }
+                                sumAdjScores++;
+                            }
+                        }
+                    });
+
+                    if (sumAdjScores === 0) {
+                        innerScores[c1.name] = [...lvScores[c1.name]];
+                    } else {
+                        let mean = ss.mean(innerApproximation);
+                        let std = ss.sampleStandardDeviation(innerApproximation);
+                        innerScores[c1.name] = innerApproximation.map(s => std > 0 ? (s - mean) / std : 0);
+                    }
+                });
+
+                // Step 2.3: Outer Weight Updates (Reflective Model - Mode A)
+                plsConstructs.forEach(c => {
+                    let newWeights = {};
+                    c.indicators.forEach(idx => {
+                        // covariance standard because standardized is correlation
+                        newWeights[idx] = ss.sampleCorrelation(stdData[idx], innerScores[c.name]);
+                    });
+
+                    // Normalize weights so that std(scores) = 1
+                    let tempScores = Array(N).fill(0);
+                    for (let i = 0; i < N; i++) {
+                        c.indicators.forEach(idx => {
+                            tempScores[i] += stdData[idx][i] * newWeights[idx];
+                        });
+                    }
+                    let stdTemp = ss.sampleStandardDeviation(tempScores);
+                    c.indicators.forEach(idx => {
+                        newWeights[idx] = stdTemp > 0 ? newWeights[idx] / stdTemp : 0;
+                    });
+
+                    outerWeights[c.name] = newWeights;
+
+                    // Compute new standardized LV score
+                    let finalScores = Array(N).fill(0);
+                    for (let i = 0; i < N; i++) {
+                        c.indicators.forEach(idx => {
+                            finalScores[i] += stdData[idx][i] * newWeights[idx];
+                        });
+                    }
+                    let mean = ss.mean(finalScores);
+                    let std = ss.sampleStandardDeviation(finalScores);
+                    lvScores[c.name] = finalScores.map(s => std > 0 ? (s - mean) / std : 0);
+                });
+
+                // Check Convergence
+                let maxDiff = 0;
+                plsConstructs.forEach(c => {
+                    c.indicators.forEach(idx => {
+                        let diff = Math.abs(outerWeights[c.name][idx] - prevWeights[c.name][idx]);
+                        if (diff > maxDiff) maxDiff = diff;
+                    });
+                });
+
+                if (maxDiff < tolerance) converged = true;
+                iter++;
+            }
+
+            // Step 3: Compute Structural Model Paths (Multiple Regressions)
+            let pathCoefficients = {}; // structure: from_to -> coefficient
+            let lvRSquared = {};
+
+            plsConstructs.forEach(cTarget => {
+                let predictors = plsPaths.filter(p => p.to === cTarget.name).map(p => p.from);
+                if (predictors.length > 0) {
+                    // Run Multiple regression of Y_target on Y_predictors
+                    let Y = lvScores[cTarget.name].map(s => [s]);
+                    let X = lvScores[cTarget.name].map((_, i) => [1, ...predictors.map(pName => lvScores[pName][i])]);
+
+                    let XT = matrixTranspose(X);
+                    let XTX = matrixMultiply(XT, X);
+                    let XTX_inv = matrixInvert(XTX);
+
+                    if (XTX_inv) {
+                        let XTY = matrixMultiply(XT, Y);
+                        let B = matrixMultiply(XTX_inv, XTY); // beta coefficient weights matrix
+                        
+                        predictors.forEach((pName, idx) => {
+                            pathCoefficients[`${pName}_to_${cTarget.name}`] = B[idx + 1][0];
+                        });
+
+                        // R-Square calculation
+                        let fitted = matrixMultiply(X, B);
+                        let residuals = lvScores[cTarget.name].map((val, i) => val - fitted[i][0]);
+                        let ssRes = ss.sum(residuals.map(r => r * r));
+                        let ssTot = ss.sum(lvScores[cTarget.name].map(val => Math.pow(val - 0, 2))); // standardized mean is 0
+                        
+                        let r2 = 1 - (ssRes / ssTot);
+                        lvRSquared[cTarget.name] = r2;
+                    }
+                }
+            });
+
+            // Step 4: Outer Measurement Evaluations (Loadings, Reliability, validity)
+            let outerLoadings = {}; // Key: LV_name -> Object of { indIdx: Loading }
+            let outerAlpha = {};
+            let outerCR = {};
+            let outerAVE = {};
+
+            plsConstructs.forEach(c => {
+                let loadings = {};
+                let sumSqLoadings = 0;
+                let sumLoadings = 0;
+                let sumUniqueness = 0;
+
+                c.indicators.forEach(idx => {
+                    let r = ss.sampleCorrelation(stdData[idx], lvScores[c.name]);
+                    loadings[idx] = r;
+                    sumSqLoadings += r * r;
+                    sumLoadings += r;
+                    sumUniqueness += (1 - r * r);
+                });
+
+                outerLoadings[c.name] = loadings;
+                let k = c.indicators.length;
+
+                // AVE calculation
+                outerAVE[c.name] = sumSqLoadings / k;
+
+                // Composite Reliability (CR)
+                outerCR[c.name] = Math.pow(sumLoadings, 2) / (Math.pow(sumLoadings, 2) + sumUniqueness);
+
+                // Cronbach's Alpha (standardized)
+                if (k > 1) {
+                    let correlations = [];
+                    for (let i = 0; i < k; i++) {
+                        for (let j = i + 1; j < k; j++) {
+                            correlations.push(ss.sampleCorrelation(stdData[c.indicators[i]], stdData[c.indicators[j]]));
+                        }
+                    }
+                    let avgR = ss.mean(correlations);
+                    outerAlpha[c.name] = (k * avgR) / (1 + (k - 1) * avgR);
+                } else {
+                    outerAlpha[c.name] = 1.0;
+                }
+            });
+
+            // --- STREAMING_CHUNK: Formatting SEM-PLS SmartPLS Quality Tables ---
+            // Render beautiful SmartPLS-exact report tables
+            let reportHtml = `
+            <div class="spss-output-container">
+                <div class="spss-output-title">A. Path Coefficients (Outer & Inner Structural Estimates)</div>
+                <table class="spss-output-table">
+                    <thead>
+                        <tr>
+                            <th>Alur Struktural (Path Relation)</th>
+                            <th>Path Coefficient (&beta;)</th>
+                            <th>Significance / Trend</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+            
+            plsPaths.forEach(p => {
+                let val = pathCoefficients[`${p.from}_to_${p.to}`];
+                let valStr = val !== undefined ? val.toFixed(3) : ".";
+                let desc = val > 0 ? "Positif" : "Negatif";
+                if (val === undefined) desc = ".";
+                
+                reportHtml += `<tr>
+                    <td><strong>${p.from}</strong> <i class="fa-solid fa-arrow-right text-amber-500 mx-1"></i> <strong>${p.to}</strong></td>
+                    <td>${valStr}</td>
+                    <td>${desc}</td>
+                </tr>`;
+            });
+
+            reportHtml += `
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="spss-output-container mt-6">
+                <div class="spss-output-title">B. Construct Reliability and Validity</div>
+                <table class="spss-output-table">
+                    <thead>
+                        <tr>
+                            <th>Construct Laten</th>
+                            <th>Cronbach's Alpha</th>
+                            <th>Composite Reliability (CR)</th>
+                            <th>Average Variance Extracted (AVE)</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+            plsConstructs.forEach(c => {
+                let alpha = outerAlpha[c.name];
+                let cr = outerCR[c.name];
+                let ave = outerAVE[c.name];
+                
+                reportHtml += `<tr>
+                    <td><strong>${c.name}</strong></td>
+                    <td>${alpha.toFixed(3)}</td>
+                    <td>${cr.toFixed(3)}</td>
+                    <td>${ave.toFixed(3)}</td>
+                </tr>`;
+            });
+
+            reportHtml += `
+                    </tbody>
+                </table>
+                <div class="spss-output-note">* Evaluasi Konstruk Valid jika nilai AVE > 0.50, dan Reliabel jika Alpha/CR > 0.60.</div>
+            </div>
+
+            <div class="spss-output-container mt-6">
+                <div class="spss-output-title">C. Discriminant Validity (Fornell-Larcker Criterion)</div>
+                <table class="spss-output-table">
+                    <thead>
+                        <tr>
+                            <th>Construct</th>`;
+            
+            plsConstructs.forEach(c => {
+                reportHtml += `<th>${c.name}</th>`;
+            });
+            reportHtml += `</tr></thead><tbody>`;
+
+            plsConstructs.forEach(cRow => {
+                reportHtml += `<tr><td><strong>${cRow.name}</strong></td>`;
+                plsConstructs.forEach(cCol => {
+                    if (cRow.name === cCol.name) {
+                        // Diagonal: square root of AVE
+                        let sqAve = Math.sqrt(outerAVE[cRow.name]);
+                        reportHtml += `<td class="font-bold text-blue-700 bg-slate-50/50">[${sqAve.toFixed(3)}]</td>`;
+                    } else {
+                        // Off-diagonal: correlation
+                        let corr = ss.sampleCorrelation(lvScores[cRow.name], lvScores[cCol.name]);
+                        reportHtml += `<td>${corr.toFixed(3)}</td>`;
+                    }
+                });
+                reportHtml += `</tr>`;
+            });
+
+            reportHtml += `
+                    </tbody>
+                </table>
+                <div class="spss-output-note">* Nilai dalam tanda kurung diagonal adalah akar kuadrat AVE. Nilai ini harus lebih besar dari korelasi dengan konstruk lainnya untuk memenuhi uji validitas diskriminan.</div>
+            </div>
+
+            <div class="spss-output-container mt-6">
+                <div class="spss-output-title">D. Outer Loadings (Measurement Model Indicators)</div>
+                <table class="spss-output-table">
+                    <thead>
+                        <tr>
+                            <th>Indikator</th>
+                            <th>Construct Pengukuran</th>
+                            <th>Outer Loading</th>
+                            <th>Status Kelayakan</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+            plsConstructs.forEach(c => {
+                c.indicators.forEach(idx => {
+                    let loading = outerLoadings[c.name][idx];
+                    let layak = Math.abs(loading) >= 0.70 ? "LAYAK / VALID" : "KURANG LAYAK (< 0.70)";
+                    let cellColor = Math.abs(loading) >= 0.70 ? "text-emerald-700 font-bold" : "text-amber-600";
+                    
+                    reportHtml += `<tr>
+                        <td><strong>${variables[idx].name}</strong></td>
+                        <td>${c.name}</td>
+                        <td>${loading.toFixed(3)}</td>
+                        <td class="${cellColor}">${layak}</td>
+                    </tr>`;
+                });
+            });
+
+            reportHtml += `
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="spss-output-container mt-6">
+                <div class="spss-output-title">E. Model Fit (R-Square of Endogenous Constructs)</div>
+                <table class="spss-output-table">
+                    <thead>
+                        <tr>
+                            <th>Construct Laten</th>
+                            <th>R Square</th>
+                            <th>R Square Adjusted</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+            let hasEndogenous = false;
+            plsConstructs.forEach(c => {
+                let r2 = lvRSquared[c.name];
+                if (r2 !== undefined) {
+                    hasEndogenous = true;
+                    // Adj R2 = 1 - (1-R2)*(N-1)/(N-predictors-1)
+                    let predictors = plsPaths.filter(p => p.to === c.name).length;
+                    let adjR2 = 1 - ((1 - r2) * (N - 1) / (N - predictors - 1));
+                    
+                    reportHtml += `<tr>
+                        <td><strong>${c.name}</strong></td>
+                        <td>${r2.toFixed(3)}</td>
+                        <td>${adjR2.toFixed(3)}</td>
+                    </tr>`;
+                }
+            });
+
+            if (!hasEndogenous) {
+                reportHtml += `<tr><td colspan="3" class="text-center text-slate-400 italic">Tidak ada variabel endogen (variabel target) dalam model struktural ini.</td></tr>`;
+            }
+
+            reportHtml += `
+                    </tbody>
+                </table>
+                <div class="spss-output-note">a. Total Responden Valid (N) = ${N}. Iterasi PLS selesai pada langkah ke-${iter}.</div>
+            </div>`;
+
+            printOutput("SmartPLS (SEM-PLS) Analysis Model Report", reportHtml);
+            closePLSModelingDialog();
+            showMsg("Analisis structural SEM-PLS SmartPLS berhasil dijalankan!", true);
+        }
+
+        // --- STREAMING_CHUNK: Window Onload & Event Hooking ---
+        window.onload = function() {
+            renderTable();
+            changeLanguage('id'); 
+        };
+    </script>
+</body>
+</html>
